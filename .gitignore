@@ -34,3 +34,6 @@ worker/.env
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*

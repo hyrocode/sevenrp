@@ -3,26 +3,32 @@
 import http from "node:http";
 import { Client, GatewayIntentBits } from "discord.js";
 
+function cleanEnv(val) {
+  if (!val) return "";
+  let s = String(val).trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 const PORT = Number(process.env.PORT) || 3000;
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const WORKER_SHARED_SECRET = process.env.WORKER_SHARED_SECRET;
-const DASHBOARD_URL = (process.env.DASHBOARD_URL || "").replace(/\/+$/, "");
-const WORKER_ID = process.env.WORKER_ID || "render-worker-01";
+let rawToken = cleanEnv(process.env.DISCORD_BOT_TOKEN);
+if (rawToken.startsWith("Bot ")) {
+  rawToken = rawToken.slice(4).trim();
+}
+const DISCORD_BOT_TOKEN = rawToken;
+const WORKER_SHARED_SECRET = cleanEnv(process.env.WORKER_SHARED_SECRET);
+const DASHBOARD_URL = cleanEnv(process.env.DASHBOARD_URL).replace(/\/+$/, "");
+const WORKER_ID = cleanEnv(process.env.WORKER_ID) || "render-worker-01";
 
 if (!DISCORD_BOT_TOKEN) {
   console.error("ERRO: Variável DISCORD_BOT_TOKEN não definida.");
   process.exit(1);
 }
 
-if (!WORKER_SHARED_SECRET) {
-  console.error("ERRO: Variável WORKER_SHARED_SECRET não definida.");
-  process.exit(1);
-}
+console.log(`[Config] Token carregado (comprimento: ${DISCORD_BOT_TOKEN.length}, prefixo: ${DISCORD_BOT_TOKEN.slice(0, 8)}...)`);
 
-if (!DASHBOARD_URL) {
-  console.error("ERRO: Variável DASHBOARD_URL não definida (ex: https://seu-painel.vercel.app).");
-  process.exit(1);
-}
 
 // -------------------------------------------------------------
 // 1. Servidor HTTP (para o Render considerar Web Service & UptimeRobot)
