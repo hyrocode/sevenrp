@@ -99,69 +99,13 @@ function Dashboard() {
         />
       </div>
 
-      {/* Atividade Operacional (Gráfico em Linhas Monotônico) & Saúde da Integração */}
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr] items-stretch">
-        <Panel
-          title="Atividade Operacional"
-          description="Fluxo contínuo de eventos registrados nas últimas 12 horas"
-          className="flex flex-col justify-between h-full"
-        >
-          <ActivityLineChart data={activity} />
-        </Panel>
-
-        <Panel
-          title="Saúde da Integração"
-          description="Status dos conectores e do gateway"
-          className="flex flex-col justify-between h-full"
-        >
-          <div className="space-y-3 flex-1">
-            {/* Status Worker */}
-            <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#0B0D14] p-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-7 items-center justify-center rounded border border-white/[0.07] bg-white/[0.03] text-zinc-400">
-                  <Bot className="size-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-zinc-200">
-                    {data?.worker.online ? "Worker Conectado" : "Worker Offline"}
-                  </p>
-                  <p className="text-[10px] text-zinc-500">
-                    {data?.worker.lastSeenAt ? `Heartbeat: ${formatDate(data.worker.lastSeenAt)}` : "Aguardando sinal"}
-                  </p>
-                </div>
-              </div>
-              <span className={data?.worker.online ? "status-dot status-dot-connected" : "status-dot status-dot-neutral"} />
-            </div>
-
-            {/* Linhas de Diagnóstico */}
-            <div className="divide-y divide-white/[0.04] text-xs">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-zinc-400">API REST Discord</span>
-                <StatusBadge tone={data?.configured ? "success" : "muted"}>
-                  {data?.configured ? "Conectado" : "Pendente"}
-                </StatusBadge>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-zinc-400">Latência do Gateway</span>
-                <span className="font-mono text-zinc-300">
-                  {data?.worker.latencyMs != null ? `${data.worker.latencyMs} ms` : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-zinc-400">Fila de Ações</span>
-                <span className="font-medium text-zinc-300">{counts?.pendingActions ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-zinc-400">Revisões NSFW</span>
-                <span className="font-medium text-zinc-300">{counts?.pendingNsfw ?? 0}</span>
-              </div>
-            </div>
-          </div>
-        </Panel>
+      {/* 2. Gráfico Hero Panorâmico Full-Width (Idêntico ao print de referência do usuário) */}
+      <div className="w-full">
+        <ActivityLineChart data={activity} />
       </div>
 
-      {/* Auditoria Recente & Módulos */}
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr] items-stretch">
+      {/* 3. Grid Inferior: Auditoria Recente & Saúde da Integração / Acessos Rápidos */}
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr] items-start">
         <Panel
           title="Últimas Ações Administrativas"
           description="Auditoria operacional de eventos registrados"
@@ -219,36 +163,86 @@ function Dashboard() {
           )}
         </Panel>
 
-        <Panel
-          title="Acessos Rápidos"
-          description="Navegação direta para as seções"
-          className="flex flex-col justify-between h-full"
-        >
-          <div className="grid grid-cols-2 gap-2.5 flex-1">
-            {[
-              [ShieldCheck, "Moderação", "/moderacao"],
-              [Ticket, "Tickets", "/tickets"],
-              [Command, "Comandos", "/comandos"],
-              [Server, "Servidor", "/servidor"],
-            ].map(([Icon, label, to]) => {
-              const LucideIcon = Icon as typeof ShieldCheck;
-              return (
-                <Link
-                  key={to as string}
-                  to={to as string}
-                  className="group flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0E1118] p-3 transition-colors hover:border-purple-500/30 hover:bg-[#131722]"
-                >
-                  <div className="flex size-7 items-center justify-center rounded border border-white/[0.06] bg-white/[0.03] text-zinc-400 group-hover:text-purple-300">
-                    <LucideIcon className="size-3.5" />
+        <div className="space-y-6">
+          <Panel
+            title="Saúde da Integração"
+            description="Status dos conectores e do gateway"
+          >
+            <div className="space-y-3">
+              {/* Status Worker */}
+              <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#0B0D14] p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-7 items-center justify-center rounded border border-white/[0.07] bg-white/[0.03] text-zinc-400">
+                    <Bot className="size-3.5" />
                   </div>
-                  <span className="mt-4 text-xs font-medium text-zinc-300 group-hover:text-zinc-100">
-                    {label as string}
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-200">
+                      {data?.worker.online ? "Worker Conectado" : "Worker Offline"}
+                    </p>
+                    <p className="text-[10px] text-zinc-500">
+                      {data?.worker.lastSeenAt ? `Heartbeat: ${formatDate(data.worker.lastSeenAt)}` : "Aguardando sinal"}
+                    </p>
+                  </div>
+                </div>
+                <span className={data?.worker.online ? "status-dot status-dot-connected" : "status-dot status-dot-neutral"} />
+              </div>
+
+              {/* Linhas de Diagnóstico */}
+              <div className="divide-y divide-white/[0.04] text-xs">
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-zinc-400">API REST Discord</span>
+                  <StatusBadge tone={data?.configured ? "success" : "muted"}>
+                    {data?.configured ? "Conectado" : "Pendente"}
+                  </StatusBadge>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-zinc-400">Latência do Gateway</span>
+                  <span className="font-mono text-zinc-300">
+                    {data?.worker.latencyMs != null ? `${data.worker.latencyMs} ms` : "—"}
                   </span>
-                </Link>
-              );
-            })}
-          </div>
-        </Panel>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-zinc-400">Fila de Ações</span>
+                  <span className="font-medium text-zinc-300">{counts?.pendingActions ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-zinc-400">Revisões NSFW</span>
+                  <span className="font-medium text-zinc-300">{counts?.pendingNsfw ?? 0}</span>
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Acessos Rápidos"
+            description="Navegação direta para as seções"
+          >
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                [ShieldCheck, "Moderação", "/moderacao"],
+                [Ticket, "Tickets", "/tickets"],
+                [Command, "Comandos", "/comandos"],
+                [Server, "Servidor", "/servidor"],
+              ].map(([Icon, label, to]) => {
+                const LucideIcon = Icon as typeof ShieldCheck;
+                return (
+                  <Link
+                    key={to as string}
+                    to={to as string}
+                    className="group flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0E1118] p-3 transition-colors hover:border-purple-500/30 hover:bg-[#131722]"
+                  >
+                    <div className="flex size-7 items-center justify-center rounded border border-white/[0.06] bg-white/[0.03] text-zinc-400 group-hover:text-purple-300">
+                      <LucideIcon className="size-3.5" />
+                    </div>
+                    <span className="mt-4 text-xs font-medium text-zinc-300 group-hover:text-zinc-100">
+                      {label as string}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </Panel>
+        </div>
       </div>
     </div>
   );
