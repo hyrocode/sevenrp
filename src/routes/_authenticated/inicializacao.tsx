@@ -2,7 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImageUp, Loader2, Pin, RefreshCw, Send, Trash2, Sparkles, Check, Hash, Tag } from "lucide-react";
+import {
+  Bell, BookOpen, Check, FileText, Hash, Headphones, ImageUp,
+  Lightbulb, Loader2, Pin, RefreshCw, Send, SlidersHorizontal,
+  Sparkles, Trash2, X
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Panel, StatusBadge } from "@/components/dashboard-ui";
@@ -60,6 +64,19 @@ type Template = {
   last_error: string | null;
 };
 
+// Ícone semântico para cada finalidade de canal
+function getPurposeIcon(key: string) {
+  switch (key) {
+    case "regras": return BookOpen;
+    case "boas_vindas": return Sparkles;
+    case "avisos": return Bell;
+    case "suporte": return Headphones;
+    case "sugestoes": return Lightbulb;
+    case "logs": return FileText;
+    default: return Hash;
+  }
+}
+
 function SetupPage() {
   const queryClient = useQueryClient();
   const fetchSetup = useServerFn(getServerSetup);
@@ -100,14 +117,18 @@ function SetupPage() {
   const channels = useMemo(() => (data?.channels ?? []).filter((c) => TEXT_CHANNEL_TYPES.includes(c.type)), [data]);
   const settingFor = (purpose: string) => data?.channelSettings.find((s) => s.purpose === purpose) ?? null;
 
+  // Estados de Modais
+  const [channelsModalOpen, setChannelsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Template | null>(null);
+
+  const configuredChannelsCount = CHANNEL_PURPOSES.filter((p) => Boolean(settingFor(p.key)?.channel_id)).length;
 
   const channelMutation = useMutation({
     mutationFn: (input: { purpose: string; channelId: string }) => runSaveChannel({ data: input }),
     onSuccess: (result) => {
       if (!result.ok) { toast.error(result.message); return; }
       if (result.missing.length) toast.warning(`Canal salvo, mas faltam permissões: ${result.missing.join(", ")}`);
-      else toast.success(`Canal #${result.channelName} configurado.`);
+      else toast.success(`Canal #${result.channelName} configurado com sucesso.`);
       invalidate();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao salvar o canal."),
@@ -131,7 +152,7 @@ function SetupPage() {
         },
       }),
     onSuccess: () => {
-      toast.success("Template salvo.");
+      toast.success("Template salvo com sucesso.");
       setEditing(null);
       invalidate();
     },
@@ -142,7 +163,7 @@ function SetupPage() {
     mutationFn: (id: string) => runPublish({ data: { id } }),
     onSuccess: (result) => {
       if (!result.ok) { toast.error(result.message); return; }
-      toast.success(result.mode === "created" ? "Template publicado no Discord." : "Mensagem existente atualizada no Discord.");
+      toast.success(result.mode === "created" ? "Template publicado no Discord." : "Mensagem atualizada no Discord.");
       invalidate();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao publicar."),
@@ -173,23 +194,38 @@ function SetupPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
+      {/* Header Executivo */}
       <PageHeader
-        eyebrow="INICIALIZAÇÃO DO SERVIDOR"
-        title="Canais & Boas-Vindas"
-        description="Mapeamento de canais funcionais, automação de boas-vindas com rotação de banners e templates institucionais."
+        eyebrow="SISTEMA • SERVIDOR DISCORD"
+        title="Inicialização & Boas-Vindas"
+        description="Gerenciamento de canais funcionais, automação de boas-vindas com banners dinâmicos e templates oficiais."
         actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={syncing}
-            onClick={() => {
-              void autoSync.refetch().then(() => void setup.refetch());
-            }}
-            className="gap-1.5"
-          >
-            {syncing ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-            <span>{syncing ? "Sincronizando..." : "Sincronizar Canais"}</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setChannelsModalOpen(true)}
+              className="gap-1.5"
+            >
+              <Hash className="size-3 text-purple-400" />
+              <span>Canais Funcionais</span>
+              <span className="rounded bg-purple-500/20 px-1.5 py-0.2 text-[10px] font-semibold text-purple-300">
+                {configuredChannelsCount}/{CHANNEL_PURPOSES.length}
+              </span>
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={syncing}
+              onClick={() => {
+                void autoSync.refetch().then(() => void setup.refetch());
+              }}
+              className="gap-1.5"
+            >
+              {syncing ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+              <span>{syncing ? "Sincronizando..." : "Sincronizar Canais"}</span>
+            </Button>
+          </div>
         }
       />
 
@@ -204,51 +240,46 @@ function SetupPage() {
           }
         />
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-          {/* Painel de Canais Funcionais */}
-          <Panel
-            title="Canais Funcionais"
-            description="Mapeie a finalidade de cada canal do Discord para o funcionamento do bot"
-          >
-            <div className="divide-y divide-white/[0.04]">
-              {CHANNEL_PURPOSES.map((purpose) => {
-                const current = settingFor(purpose.key);
-                return (
-                  <div key={purpose.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 first:pt-1 last:pb-1">
-                    <div className="min-w-0 pr-3">
-                      <p className="text-xs font-medium text-zinc-200">{purpose.label}</p>
-                      <p className="text-[11px] text-zinc-500 truncate">{purpose.hint}</p>
-                    </div>
-                    <select
-                      className="h-8.5 w-full sm:w-60 shrink-0 rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
-                      value={current?.channel_id ?? ""}
-                      disabled={channelMutation.isPending}
-                      onChange={(event) => {
-                        const channelId = event.target.value;
-                        if (channelId) channelMutation.mutate({ purpose: purpose.key, channelId });
-                      }}
-                    >
-                      <option value="">Não configurado</option>
-                      {channels.map((channel) => (
-                        <option key={channel.channel_id} value={channel.channel_id}>
-                          #{channel.name} ({channelKind(channel.type)})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })}
+        <div className="space-y-6">
+          {/* Card Resumo de Canais Funcionais (Abertura do Modal) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-[#11141D] p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-purple-500/30 bg-purple-950/30 text-purple-300">
+                <SlidersHorizontal className="size-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-semibold text-zinc-100">Canais Funcionais do Servidor</h3>
+                  <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+                    {configuredChannelsCount} de {CHANNEL_PURPOSES.length} mapeados
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-zinc-400">
+                  Defina onde o bot enviará boas-vindas, regras, anúncios, avisos de moderação e tickets.
+                </p>
+              </div>
             </div>
-          </Panel>
 
-          {/* Painel de Boas-Vindas */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setChannelsModalOpen(true)}
+              className="shrink-0 gap-1.5 self-start sm:self-center"
+            >
+              <SlidersHorizontal className="size-3 text-purple-400" />
+              <span>Configurar Canais no Modal</span>
+            </Button>
+          </div>
+
+          {/* Automação de Boas-Vindas (Seção Principal com Destaque e Organização) */}
           <WelcomePanel
             data={data}
             channels={channels}
+            onOpenChannelsModal={() => setChannelsModalOpen(true)}
             onSave={(payload) =>
               runSaveWelcome({ data: payload })
                 .then(() => {
-                  toast.success("Configuração de boas-vindas salva com sucesso.");
+                  toast.success("Configurações de boas-vindas salvas.");
                   invalidate();
                 })
                 .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Falha ao salvar."))
@@ -264,13 +295,14 @@ function SetupPage() {
             testing={welcomeTest.isPending}
           />
 
-          {/* Templates Institucionais */}
-          <div className="xl:col-span-2">
+          {/* Grid Inferior: Templates Oficiais & Histórico de Entregas */}
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+            {/* Templates Institucionais */}
             <Panel
               title="Templates Oficiais do Servidor"
-              description="Mensagens institucionais fixadas e formatadas (republicação idempotente sem duplicidade)"
+              description="Mensagens institucionais formatadas para canais estáticos (republicação sem duplicidade)"
             >
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {(data?.templates ?? []).map((template) => {
                   const item = template as unknown as Template;
                   return (
@@ -311,7 +343,7 @@ function SetupPage() {
                               variant="ghost"
                               className="text-zinc-500 hover:text-rose-300"
                               onClick={() => {
-                                if (window.confirm(`Remover a mensagem publicada de "${item.name}" no Discord?`)) {
+                                if (window.confirm(`Remover a mensagem de "${item.name}" no Discord?`)) {
                                   unpublishMutation.mutate(item.id);
                                 }
                               }}
@@ -326,25 +358,23 @@ function SetupPage() {
                 })}
               </div>
             </Panel>
-          </div>
 
-          {/* Histórico de Entregas */}
-          <div className="xl:col-span-2">
+            {/* Histórico de Entregas */}
             <Panel
-              title="Histórico de Boas-Vindas Enviadas"
-              description="Registro recente de novos membros recebidos no servidor"
+              title="Histórico de Boas-Vindas"
+              description="Últimos membros recebidos no servidor"
             >
               {(data?.welcomeEvents ?? []).length === 0 ? (
                 <EmptyState
                   title="Sem histórico recente"
-                  description="Nenhuma entrada de membro registrada nas últimas horas."
+                  description="Nenhuma entrada de membro registrada até o momento."
                 />
               ) : (
                 <div className="divide-y divide-white/[0.04]">
                   {(data?.welcomeEvents ?? []).map((event) => (
                     <div key={event.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
                       <span className="font-medium text-zinc-200 truncate">{event.username}</span>
-                      <span className="text-zinc-500 font-mono">{formatDate(event.created_at)}</span>
+                      <span className="text-zinc-500 font-mono text-[11px]">{formatDate(event.created_at)}</span>
                       <StatusBadge tone={event.status === "error" ? "danger" : "success"}>
                         {event.status === "delivered" ? "Entregue" : event.status}
                       </StatusBadge>
@@ -357,10 +387,94 @@ function SetupPage() {
         </div>
       )}
 
+      {/* MODAL DE CANAIS FUNCIONAIS (Responsividade Total, Limpo e Organizado) */}
+      {channelsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="max-h-[90vh] w-full max-w-xl flex flex-col rounded-xl border border-white/[0.10] bg-[#10131B] shadow-2xl overflow-hidden animate-fade-up">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-7 items-center justify-center rounded-md border border-purple-500/30 bg-purple-950/30 text-purple-300">
+                  <Hash className="size-3.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-100">Mapeamento de Canais Funcionais</h3>
+                  <p className="text-[11px] text-zinc-400">Vincule os canais reais do Discord para cada finalidade do bot.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setChannelsModalOpen(false)}
+                className="flex size-7 items-center justify-center rounded border border-white/[0.06] text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Body Modal (Lista com Rolagem Suave) */}
+            <div className="flex-1 overflow-y-auto p-5 divide-y divide-white/[0.04]">
+              {CHANNEL_PURPOSES.map((purpose) => {
+                const current = settingFor(purpose.key);
+                const Icon = getPurposeIcon(purpose.key);
+                const isConfigured = Boolean(current?.channel_id);
+
+                return (
+                  <div
+                    key={purpose.key}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 first:pt-1 last:pb-1"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded border ${isConfigured ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" : "border-white/[0.06] bg-white/[0.02] text-zinc-500"}`}>
+                        <Icon className="size-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-zinc-100">{purpose.label}</p>
+                          {isConfigured && (
+                            <span className="size-1.5 rounded-full bg-emerald-400" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-zinc-400">{purpose.hint}</p>
+                      </div>
+                    </div>
+
+                    <select
+                      className="h-8.5 w-full sm:w-60 shrink-0 rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+                      value={current?.channel_id ?? ""}
+                      disabled={channelMutation.isPending}
+                      onChange={(event) => {
+                        const channelId = event.target.value;
+                        if (channelId) channelMutation.mutate({ purpose: purpose.key, channelId });
+                      }}
+                    >
+                      <option value="">Não configurado</option>
+                      {channels.map((channel) => (
+                        <option key={channel.channel_id} value={channel.channel_id}>
+                          #{channel.name} ({channelKind(channel.type)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="flex items-center justify-between border-t border-white/[0.07] bg-[#0E1118] px-5 py-3">
+              <span className="text-xs text-zinc-400">
+                {configuredChannelsCount} de {CHANNEL_PURPOSES.length} canais ativos
+              </span>
+              <Button size="sm" variant="primary" onClick={() => setChannelsModalOpen(false)}>
+                Concluir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Edição de Template */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/[0.10] bg-[#11141D] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/[0.10] bg-[#11141D] p-5 shadow-2xl animate-fade-up">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
               <p className="text-sm font-semibold text-zinc-100">Editar Template Institucional</p>
               <button onClick={() => setEditing(null)} className="text-zinc-500 hover:text-zinc-300 text-xs">Fechar</button>
@@ -427,12 +541,14 @@ type WelcomePayload = Parameters<typeof saveWelcomeConfig>[0] extends { data: in
 function WelcomePanel({
   data,
   channels,
+  onOpenChannelsModal,
   onSave,
   onTest,
   testing,
 }: {
   data: Awaited<ReturnType<typeof getServerSetup>> | undefined;
   channels: Array<{ channel_id: string; name: string }>;
+  onOpenChannelsModal: () => void;
   onSave: (payload: WelcomePayload) => void;
   onTest: (payload: WelcomePayload) => void;
   testing: boolean;
@@ -559,38 +675,71 @@ function WelcomePanel({
 
   return (
     <Panel
-      title="Boas-Vindas Automáticas"
-      description="Mensagem e banner rotativo enviados a cada novo membro que entrar no servidor"
+      title="Automação de Boas-Vindas"
+      description="Disparo automático de mensagem e imagem alternada da galeria para novos membros"
     >
-      <div className="space-y-4">
-        {/* Toggle Ativação */}
-        <label className="flex items-center justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3 cursor-pointer">
-          <div>
-            <p className="text-xs font-semibold text-zinc-200">Ativar Boas-Vindas Automáticas</p>
-            <p className="text-[11px] text-zinc-500">Dispara mensagem com imagem alternada ao entrar novo membro</p>
+      <div className="space-y-5">
+        {/* Linha 1: Configurações Principais em 3 Colunas Perfeitamente Alinhadas */}
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* 1. Ativação */}
+          <div className="flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3">
+            <div>
+              <p className="text-xs font-semibold text-zinc-100">Status da Automação</p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Enviar boas-vindas na entrada de novos membros</p>
+            </div>
+            <label className="mt-3 flex items-center justify-between cursor-pointer border-t border-white/[0.04] pt-2">
+              <span className={`text-xs font-medium ${form.enabled ? "text-emerald-400" : "text-zinc-500"}`}>
+                {form.enabled ? "Ativo" : "Desativado"}
+              </span>
+              <input
+                type="checkbox"
+                checked={form.enabled}
+                onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                className="size-4 rounded accent-purple-600 cursor-pointer"
+              />
+            </label>
           </div>
-          <input
-            type="checkbox"
-            checked={form.enabled}
-            onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-            className="size-4 rounded accent-purple-600 cursor-pointer"
-          />
-        </label>
 
-        {/* Seleção de Canal e Cargo */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">Canal de Chegada</label>
-            <select className={field} value={form.channelId} onChange={(e) => setForm({ ...form, channelId: e.target.value })}>
-              <option value="">Selecione o canal...</option>
+          {/* 2. Canal de Chegada */}
+          <div className="flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-zinc-100">Canal de Chegada</p>
+                <button
+                  type="button"
+                  onClick={onOpenChannelsModal}
+                  className="text-[10px] text-purple-400 hover:underline"
+                >
+                  Mapear Canais
+                </button>
+              </div>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Onde a mensagem será publicada</p>
+            </div>
+            <select
+              className="mt-2 h-8.5 w-full rounded-md border border-white/[0.08] bg-[#10131B] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+              value={form.channelId}
+              onChange={(e) => setForm({ ...form, channelId: e.target.value })}
+            >
+              <option value="">Selecione o canal de chegada...</option>
               {channels.map((channel) => (
-                <option key={channel.channel_id} value={channel.channel_id}>#{channel.name}</option>
+                <option key={channel.channel_id} value={channel.channel_id}>
+                  #{channel.name} ({channelKind(channel.type)})
+                </option>
               ))}
             </select>
           </div>
-          <div>
-            <label className="label">Cargo Inicial (Auto-Role)</label>
-            <select className={field} value={form.autoRoleId} onChange={(e) => setForm({ ...form, autoRoleId: e.target.value })}>
+
+          {/* 3. Cargo Inicial (Auto-Role) */}
+          <div className="flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3">
+            <div>
+              <p className="text-xs font-semibold text-zinc-100">Cargo Inicial (Auto-Role)</p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Atribuído automaticamente ao entrar</p>
+            </div>
+            <select
+              className="mt-2 h-8.5 w-full rounded-md border border-white/[0.08] bg-[#10131B] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+              value={form.autoRoleId}
+              onChange={(e) => setForm({ ...form, autoRoleId: e.target.value })}
+            >
               <option value="">Sem cargo automático</option>
               {(data?.roles ?? []).map((role) => (
                 <option key={role.role_id} value={role.role_id}>{role.name}</option>
@@ -599,54 +748,61 @@ function WelcomePanel({
           </div>
         </div>
 
-        {/* Mensagem com Variáveis */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="label mb-0">Mensagem de Boas-Vindas</label>
+        {/* Linha 2: Mensagem e Menção */}
+        <div className="rounded-lg border border-white/[0.07] bg-[#0A0C10] p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-xs font-semibold text-zinc-100">Mensagem de Boas-Vindas</label>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-zinc-500">Variáveis:</span>
+              <span className="text-[10px] text-zinc-500">Variáveis dinâmicas:</span>
               {["{user}", "{username}", "{server}"].map((token) => (
                 <button
                   key={token}
                   type="button"
                   onClick={() => insertVariable(token)}
-                  className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-mono text-purple-300 hover:bg-white/[0.08]"
+                  className="rounded border border-purple-500/25 bg-purple-950/30 px-2 py-0.5 text-[10px] font-mono text-purple-300 transition-colors hover:bg-purple-900/40"
                 >
                   {token}
                 </button>
               ))}
             </div>
           </div>
+
           <textarea
-            className="min-h-24 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] p-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+            className="min-h-24 w-full rounded-md border border-white/[0.08] bg-[#10131B] p-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
             value={form.message}
             onChange={(e) => setForm({ ...form, message: e.target.value })}
-            placeholder="Digite a mensagem..."
+            placeholder="Digite a mensagem de boas-vindas..."
           />
+
+          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={form.mentionUser}
+              onChange={(e) => setForm({ ...form, mentionUser: e.target.checked })}
+              className="size-3.5 rounded accent-purple-600"
+            />
+            <span>Mencionar o usuário no canal para gerar notificação direta</span>
+          </label>
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.mentionUser}
-            onChange={(e) => setForm({ ...form, mentionUser: e.target.checked })}
-            className="size-3.5 rounded accent-purple-600"
-          />
-          <span>Mencionar (@) o membro no canal para notificação imediata</span>
-        </label>
-
-        {/* Galeria de Banners */}
-        <div className="rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-white/[0.05]">
+        {/* Linha 3: Galeria de Banners Rotativos */}
+        <div className="rounded-lg border border-white/[0.07] bg-[#0A0C10] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.05]">
             <div>
-              <p className="text-xs font-semibold text-zinc-200">Galeria de Banners Rotativos</p>
-              <p className="text-[11px] text-zinc-500">
-                {banners.length} de {BANNER_LIMIT} banners cadastrados (recomendado 1200x400)
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold text-zinc-100">Galeria de Banners da Cidade</p>
+                <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+                  {banners.length} de {BANNER_LIMIT} imagens
+                </span>
+              </div>
+              <p className="mt-0.5 text-[11px] text-zinc-500">
+                O bot alterna automaticamente entre estas artes a cada novo membro (proporção recomendada: 1200x400).
               </p>
             </div>
-            <label className="inline-flex h-7.5 cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.05] px-2.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]">
-              {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageUp className="size-3" />}
-              <span>{uploading ? "Enviando..." : "Enviar Banners"}</span>
+
+            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.05] px-3 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]">
+              {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageUp className="size-3.5 text-purple-400" />}
+              <span>{uploading ? "Enviando..." : "Adicionar Banners"}</span>
               <input
                 type="file"
                 multiple
@@ -663,11 +819,11 @@ function WelcomePanel({
           </div>
 
           {banners.length === 0 ? (
-            <p className="mt-3 rounded border border-dashed border-white/[0.08] p-4 text-center text-xs text-zinc-500">
-              Nenhum banner enviado. O sistema pode alternar automaticamente entre até {BANNER_LIMIT} imagens.
+            <p className="mt-4 rounded border border-dashed border-white/[0.08] p-6 text-center text-xs text-zinc-500">
+              Nenhum banner cadastrado. Envie imagens horizontais para ativar a rotação automática.
             </p>
           ) : (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {banners.map((banner) => (
                 <BannerThumb
                   key={banner.id}
@@ -687,25 +843,30 @@ function WelcomePanel({
           )}
         </div>
 
-        {/* Botões de Ação */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => onSave(payload())}
-          >
-            Salvar Boas-Vindas
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={testing}
-            onClick={() => onTest(payload())}
-            className="gap-1.5"
-          >
-            {testing ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3 text-purple-400" />}
-            <span>Enviar Teste Real</span>
-          </Button>
+        {/* Rodapé de Ações de Boas-Vindas */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-white/[0.05]">
+          <span className="text-[11px] text-zinc-500">
+            {form.channelId ? "Canal vinculado e pronto para disparo." : "Atenção: selecione o canal de chegada antes de salvar."}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={testing}
+              onClick={() => onTest(payload())}
+              className="gap-1.5"
+            >
+              {testing ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3 text-purple-400" />}
+              <span>Enviar Teste Real</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => onSave(payload())}
+            >
+              Salvar Configurações
+            </Button>
+          </div>
         </div>
       </div>
     </Panel>
@@ -722,11 +883,11 @@ function BannerThumb({ path, onRemove }: { path: string; onRemove: () => Promise
   });
 
   return (
-    <div className="group relative overflow-hidden rounded-md border border-white/[0.08] bg-[#0A0C10]">
+    <div className="group relative overflow-hidden rounded-md border border-white/[0.08] bg-[#0A0C10] shadow-sm">
       {preview.data?.url ? (
-        <img src={preview.data.url} alt="Banner de boas-vindas" className="aspect-[3/1] w-full object-cover" loading="lazy" />
+        <img src={preview.data.url} alt="Banner de boas-vindas" className="aspect-[16/7] w-full object-cover" loading="lazy" />
       ) : (
-        <div className="flex aspect-[3/1] w-full items-center justify-center">
+        <div className="flex aspect-[16/7] w-full items-center justify-center">
           <Loader2 className="size-3.5 animate-spin text-zinc-500" />
         </div>
       )}

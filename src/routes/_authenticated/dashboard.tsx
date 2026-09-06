@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DataTable, PageHeader, Panel, StatCard, StatusBadge } from "@/components/dashboard-ui";
 import { EmptyState, ErrorState, LoadingRows, formatDate } from "@/components/record-table";
+import { ActivityLineChart } from "@/components/activity-line-chart";
 import { getDashboard } from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -30,7 +31,6 @@ function Dashboard() {
   const counts = data?.counts;
   const value = (input: number | undefined) => (query.isLoading ? "…" : String(input ?? 0));
   const activity = data?.activity ?? [];
-  const peak = Math.max(1, ...activity);
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -99,42 +99,13 @@ function Dashboard() {
         />
       </div>
 
-      {/* Atividade & Integridade do Sistema */}
+      {/* Atividade Operacional (Gráfico em Linhas Moderno) & Saúde da Integração */}
       <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr]">
         <Panel
           title="Atividade Operacional"
-          description="Volume de eventos registrados nas últimas 12 horas"
+          description="Fluxo contínuo de eventos registrados nas últimas 12 horas"
         >
-          {activity.every((item) => item === 0) ? (
-            <EmptyState
-              title="Sem dados de atividade"
-              description="Nenhum evento registrado nas últimas 12 horas."
-            />
-          ) : (
-            <div className="pt-2">
-              <div className="flex h-48 items-end gap-2 border-b border-white/[0.06] pb-2">
-                {activity.map((item, index) => {
-                  const pct = Math.max(8, Math.round((item / peak) * 100));
-                  return (
-                    <div key={index} className="group relative flex h-full flex-1 items-end">
-                      <div
-                        className="w-full rounded-sm bg-purple-600/70 transition-colors hover:bg-purple-500"
-                        style={{ height: `${pct}%` }}
-                        title={`${item} eventos`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex justify-between text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                <span>-12h</span>
-                <span>-9h</span>
-                <span>-6h</span>
-                <span>-3h</span>
-                <span>Agora</span>
-              </div>
-            </div>
-          )}
+          <ActivityLineChart data={activity} />
         </Panel>
 
         <Panel
