@@ -72,28 +72,27 @@ export async function sendWelcome(target: WelcomeTarget) {
   }
 
   const defaultDescription = [
-    `Olá <@${target.memberId}>, seja muito bem-vindo(a) à nossa cidade!`,
-    `Prepare seu personagem e venha vivenciar a melhor experiência de Roleplay.\n`,
-    `💬 **Chat Geral:**`,
-    `Converse com os cidadãos em <#1544536484063744142>\n`,
-    `📌 **Primeiros Passos & Links Úteis:**`,
-    `📜 **Regras:** Leia as diretrizes em <#1544535497718898708>`,
-    `📢 **Anúncios:** Acompanhe as novidades em <#1544535994924142672>`,
-    `💡 **Sugestões:** Deixe sua ideia em <#1544539285678587954>`,
-    `👀 **Spoilers:** Veja o que vem por aí em <#1545226668044587079>\n`,
-    `🎫 **Precisa de Ajuda?**`,
-    `Nossa equipe de suporte está sempre à disposição para te atender.`
+    `Olá <@${target.memberId}>, seja muito bem-vindo(a) à nossa comunidade!`,
+    `O **Seven City** está a todo vapor em fase de desenvolvimento. Ficamos muito felizes em ter você aqui desde o início acompanhando cada passo do nosso projeto.\n`,
+    `💬 **Converse com a Comunidade:**`,
+    `Participe do nosso bate-papo em <#1544536484063744142>\n`,
+    `📌 **Acompanhe o Projeto:**`,
+    `📢 **Anúncios:** Fique por dentro de tudo em <#1544535994924142672>`,
+    `📰 **Novidades:** Veja atualizações do projeto em <#1545226562998108201>`,
+    `👀 **Spoilers:** Confira prévias e bastidores em <#1545226668044587079>`,
+    `💡 **Sugestões:** Deixe sua ideia para a cidade em <#1544539285678587954>`,
+    `📜 **Regras:** Respeite a convivência em <#1544535497718898708>`
   ].join("\n");
 
-  const title = config.banner_title && config.banner_title.trim().length > 0 && config.banner_title !== "BEM-VINDO"
+  const title = config.banner_title && config.banner_title.trim().length > 0 && config.banner_title !== "BEM-VINDO" && !config.banner_title.includes("Oficial")
     ? config.banner_title
-    : "👋 Bem-vindo(a) ao Discord Oficial da SEVEN STATE!";
+    : "👋 Bem-vindo(a) ao Seven City!";
 
-  const description = (config.message && config.message.length > 20)
+  const description = (config.message && config.message.length > 20 && !config.message.includes("Suporte"))
     ? config.message
         .replaceAll("{user}", `<@${target.memberId}>`)
         .replaceAll("{username}", target.username)
-        .replaceAll("{server}", "SEVEN STATE ROLEPLAY")
+        .replaceAll("{server}", "Seven City")
     : defaultDescription;
 
   const colorHex = (config.accent_color || "#E63946").replace("#", "");
@@ -108,8 +107,8 @@ export async function sendWelcome(target: WelcomeTarget) {
       description,
       footer: {
         text: target.memberNumber
-          ? `SEVEN STATE ROLEPLAY • Cidadão nº ${target.memberNumber}`
-          : `SEVEN STATE ROLEPLAY • Divirta-se na cidade!`,
+          ? `Seven City • Membro nº ${target.memberNumber}`
+          : `Seven City • Comunidade em desenvolvimento`,
       },
       timestamp: new Date().toISOString(),
     };
