@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: seven-discord-worker
+    runtime: node
+    plan: free
+    rootDir: worker
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: WORKER_ID
+        value: render-worker-01
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: WORKER_SHARED_SECRET
+        sync: false
+      - key: DASHBOARD_URL
+        sync: false

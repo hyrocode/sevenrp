@@ -1,0 +1,68 @@
+// Tabelas que o painel pode ler/escrever pela API genérica (RLS continua valendo).
+export const READABLE_TABLES = [
+  "guild_config",
+  "discord_channels",
+  "discord_roles",
+  "discord_members",
+  "tickets",
+  "ticket_messages",
+  "moderation_cases",
+  "punishments",
+  "blocked_terms",
+  "automation_rules",
+  "nsfw_reviews",
+  "raid_events",
+  "suggestions",
+  "embeds",
+  "welcome_config",
+  "economy_transactions",
+  "bot_commands",
+  "audit_logs",
+  "worker_heartbeats",
+  "worker_actions",
+  "profiles",
+  "user_roles",
+  "channel_settings",
+  "server_templates",
+  "welcome_events",
+] as const;
+
+export const WRITABLE_TABLES = [
+  "tickets",
+  "ticket_messages",
+  "moderation_cases",
+  "punishments",
+  "blocked_terms",
+  "automation_rules",
+  "nsfw_reviews",
+  "raid_events",
+  "suggestions",
+  "embeds",
+  "welcome_config",
+  "economy_transactions",
+  "bot_commands",
+  "guild_config",
+  "channel_settings",
+  "server_templates",
+] as const;
+
+export type ReadableTable = (typeof READABLE_TABLES)[number];
+export type WritableTable = (typeof WRITABLE_TABLES)[number];
+
+export const SEARCH_FIELDS: Record<string, string[]> = {
+  tickets: ["reference", "title", "requester", "category", "status", "priority"],
+  moderation_cases: ["reference", "target_label", "reason", "status", "severity"],
+  punishments: ["target_label", "reason", "kind"],
+  blocked_terms: ["term", "severity", "action"],
+  suggestions: ["title", "body", "author_label", "status"],
+  economy_transactions: ["reference", "member_label", "kind", "risk"],
+  bot_commands: ["name", "description", "category"],
+  audit_logs: ["action", "entity", "actor_label", "target_label"],
+  discord_channels: ["name"],
+  discord_roles: ["name"],
+  discord_members: ["username", "display_name"],
+  nsfw_reviews: ["channel_name", "author_label", "status"],
+  embeds: ["key", "name", "title"],
+  raid_events: ["trigger", "action_taken", "status"],
+  worker_actions: ["action_type", "status"],
+};

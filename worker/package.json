@@ -1,0 +1,16 @@
+{
+  "name": "seven-discord-worker",
+  "version": "1.0.0",
+  "description": "Worker persistente 24/7 para o SEVEN ROLEPLAY no Discord",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.17.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,3 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { SectionPage } from "@/components/section-page";
+export const Route = createFileRoute("/_authenticated/comandos")({ head: () => ({ meta: [{ title: "Comandos — SEVEN ROLEPLAY" }, { name: "description", content: "Catálogo de comandos SEVEN ROLEPLAY." }, { property: "og:title", content: "Comandos — SEVEN ROLEPLAY" }, { property: "og:description", content: "Uso e estabilidade dos comandos." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: () => <SectionPage section="comandos" /> });

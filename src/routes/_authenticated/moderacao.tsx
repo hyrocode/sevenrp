@@ -1,0 +1,3 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { SectionPage } from "@/components/section-page";
+export const Route = createFileRoute("/_authenticated/moderacao")({ head: () => ({ meta: [{ title: "Moderação — SEVEN ROLEPLAY" }, { name: "description", content: "Ocorrências e sanções da equipe SEVEN ROLEPLAY." }, { property: "og:title", content: "Moderação — SEVEN ROLEPLAY" }, { property: "og:description", content: "Central demonstrativa de segurança e conduta." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: () => <SectionPage section="moderacao" /> });
