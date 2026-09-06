@@ -136,7 +136,7 @@ CREATE POLICY "guild_config_staff" ON public.guild_config FOR ALL TO authenticat
 -- 7. CANAIS DISCORD SINCRONIZADOS
 CREATE TABLE IF NOT EXISTS public.discord_channels (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  channel_id text NOT NULL UNIQUE,
+  channel_id text NOT NULL,
   guild_id text NOT NULL,
   name text NOT NULL,
   type integer NOT NULL DEFAULT 0,
@@ -144,7 +144,8 @@ CREATE TABLE IF NOT EXISTS public.discord_channels (
   nsfw boolean NOT NULL DEFAULT false,
   parent_id text,
   synced_at timestamptz NOT NULL DEFAULT now(),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT discord_channels_guild_channel_key UNIQUE (guild_id, channel_id)
 );
 ALTER TABLE public.discord_channels ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "discord_channels_staff" ON public.discord_channels FOR ALL TO authenticated USING (public.is_staff(auth.uid()));
@@ -152,7 +153,7 @@ CREATE POLICY "discord_channels_staff" ON public.discord_channels FOR ALL TO aut
 -- 8. CARGOS DISCORD SINCRONIZADOS
 CREATE TABLE IF NOT EXISTS public.discord_roles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  role_id text NOT NULL UNIQUE,
+  role_id text NOT NULL,
   guild_id text NOT NULL,
   name text NOT NULL,
   color integer NOT NULL DEFAULT 0,
@@ -161,7 +162,8 @@ CREATE TABLE IF NOT EXISTS public.discord_roles (
   managed boolean NOT NULL DEFAULT false,
   member_count integer DEFAULT 0,
   synced_at timestamptz NOT NULL DEFAULT now(),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT discord_roles_guild_role_key UNIQUE (guild_id, role_id)
 );
 ALTER TABLE public.discord_roles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "discord_roles_staff" ON public.discord_roles FOR ALL TO authenticated USING (public.is_staff(auth.uid()));
@@ -169,7 +171,7 @@ CREATE POLICY "discord_roles_staff" ON public.discord_roles FOR ALL TO authentic
 -- 9. MEMBROS DISCORD SINCRONIZADOS
 CREATE TABLE IF NOT EXISTS public.discord_members (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id text NOT NULL UNIQUE,
+  member_id text NOT NULL,
   guild_id text NOT NULL,
   username text NOT NULL,
   display_name text,
@@ -178,7 +180,8 @@ CREATE TABLE IF NOT EXISTS public.discord_members (
   roles jsonb NOT NULL DEFAULT '[]'::jsonb,
   joined_at timestamptz,
   synced_at timestamptz NOT NULL DEFAULT now(),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT discord_members_guild_member_key UNIQUE (guild_id, member_id)
 );
 ALTER TABLE public.discord_members ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "discord_members_staff" ON public.discord_members FOR ALL TO authenticated USING (public.is_staff(auth.uid()));
