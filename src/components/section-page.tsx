@@ -38,21 +38,21 @@ const text = (row: Record<string, Json>, key: string) => {
 
 const columnsFor: Record<string, Column[]> = {
   discord_channels: [
-    { key: "name", label: "Canal", render: (row) => <span className="font-medium text-white">{text(row, "name")}</span> },
+    { key: "name", label: "Canal", render: (row) => <span className="font-medium text-zinc-100">#{text(row, "name")}</span> },
     { key: "type", label: "Tipo", render: (row) => (row["type"] === 2 ? "Voz" : row["type"] === 4 ? "Categoria" : "Texto") },
     { key: "position", label: "Posição" },
     { key: "nsfw", label: "NSFW", render: (row) => <StatusBadge tone={row["nsfw"] ? "warning" : "muted"}>{row["nsfw"] ? "Sim" : "Não"}</StatusBadge> },
     { key: "synced_at", label: "Sincronizado", render: (row) => formatDate(row["synced_at"]) },
   ],
   discord_roles: [
-    { key: "name", label: "Cargo", render: (row) => <span className="font-medium text-white">{text(row, "name")}</span> },
+    { key: "name", label: "Cargo", render: (row) => <span className="font-medium text-zinc-100">{text(row, "name")}</span> },
     { key: "position", label: "Posição" },
     { key: "managed", label: "Gerenciado", render: (row) => <StatusBadge tone={row["managed"] ? "purple" : "muted"}>{row["managed"] ? "Bot" : "Manual"}</StatusBadge> },
     { key: "member_count", label: "Membros" },
     { key: "synced_at", label: "Sincronizado", render: (row) => formatDate(row["synced_at"]) },
   ],
   discord_members: [
-    { key: "username", label: "Membro", render: (row) => <span className="font-medium text-white">{text(row, "display_name") !== "—" ? text(row, "display_name") : text(row, "username")}</span> },
+    { key: "username", label: "Membro", render: (row) => <span className="font-medium text-zinc-100">{text(row, "display_name") !== "—" ? text(row, "display_name") : text(row, "username")}</span> },
     { key: "username", label: "Usuário" },
     { key: "is_bot", label: "Tipo", render: (row) => <StatusBadge tone={row["is_bot"] ? "info" : "muted"}>{row["is_bot"] ? "Bot" : "Membro"}</StatusBadge> },
     { key: "joined_at", label: "Entrou", render: (row) => formatDate(row["joined_at"]) },
@@ -84,7 +84,7 @@ const columnsFor: Record<string, Column[]> = {
   ],
   audit_logs: [
     { key: "created_at", label: "Horário", render: (row) => formatDate(row["created_at"]) },
-    { key: "actor_label", label: "Responsável", render: (row) => <span className="font-semibold text-white">{text(row, "actor_label")}</span> },
+    { key: "actor_label", label: "Responsável", render: (row) => <span className="font-medium text-zinc-100">{text(row, "actor_label")}</span> },
     { key: "action", label: "Ação" },
     { key: "entity", label: "Entidade" },
     { key: "target_label", label: "Alvo" },
@@ -122,7 +122,7 @@ export function SectionPage({ section, initialSearch = "" }: { section: Section;
   type Metric = [string, string, string, typeof Activity, "primary" | "purple" | "success" | "warning" | "info"];
   const metrics: Metric[] = ({
     servidor: [
-      ["Membros sincronizados", na(counts?.members), configured ? "Última sincronização no painel" : "Servidor não conectado", Users, "success"],
+      ["Membros sincronizados", na(counts?.members), configured ? "Base sincronizada" : "Servidor não conectado", Users, "purple"],
       ["Comandos registrados", na(counts?.commandsRegistered), "Slash commands ativos", Command, "purple"],
       ["Ações na fila", na(counts?.pendingActions), "Aguardando worker externo", Server, "warning"],
     ],
@@ -162,8 +162,8 @@ export function SectionPage({ section, initialSearch = "" }: { section: Section;
       : "audit_logs";
 
   const emptyDescription = section === "servidor" && !configured
-    ? "Conecte o servidor do Discord em Configurações para sincronizar automaticamente canais, cargos e membros."
-    : "Nenhum registro real foi criado ainda. Os dados aparecem aqui assim que o sistema começar a operar.";
+    ? "Conecte o servidor do Discord em Configurações para sincronizar canais, cargos e membros."
+    : "Nenhum registro encontrado no momento.";
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -173,7 +173,7 @@ export function SectionPage({ section, initialSearch = "" }: { section: Section;
         description={description}
         actions={
           <Button variant="ghost" size="sm" onClick={() => void overview.refetch()} className="gap-1.5">
-            <Activity className="size-3.5" />
+            <Activity className="size-3" />
             <span>Atualizar</span>
           </Button>
         }
@@ -187,16 +187,16 @@ export function SectionPage({ section, initialSearch = "" }: { section: Section;
 
       {section === "servidor" && (
         <div className="flex items-center">
-          <div className="flex rounded-xl border border-white/[0.06] bg-black/25 p-1 gap-1">
+          <div className="flex rounded-md border border-white/[0.07] bg-[#0E1118] p-0.5 gap-0.5">
             {serverTabs.map((item) => (
               <button
                 key={item.table}
                 onClick={() => setTab(item.table)}
                 className={cn(
-                  "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 border",
+                  "rounded px-3 py-1 text-xs font-medium transition-colors border",
                   tab === item.table
-                    ? "border-indigo-500/30 bg-[#121824] text-white shadow-sm shadow-black/40"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
+                    ? "border-purple-500/30 bg-purple-600/15 text-purple-200"
+                    : "border-transparent text-zinc-400 hover:text-zinc-200"
                 )}
               >
                 {item.label}

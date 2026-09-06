@@ -2,27 +2,26 @@
 @source "../src";
 @import "tw-animate-css";
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design System - SEVEN ROLEPLAY / Seven City
- * Inspirado fielmente na arquitetura visual de WhatsApp Automação
- * Fundo Dark Navy (#0B0F17), Superfícies (#0F141F), Cards (#121824)
- * Primária: Indigo (#6366F1), Secundária: Roxo (#8B5CF6)
+ * Design System - SEVEN CITY / SEVEN ROLEPLAY
+ * Estilo: SaaS Profissional, Minimalista, Focado em Alta Densidade e Engenharia.
+ * Zero neon, zero orbs coloridos, alinhamento rigoroso.
+ * Paleta: Dark Charcoal (#0A0C10), Superfícies (#10131B, #151A24)
+ * Destaque Secundário: Roxo Profundo Refinado (#7C3AED / #8B5CF6)
  */
 
 @theme inline {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-2xl: 22px;
-  --radius-3xl: 28px;
-  --radius-4xl: 36px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -60,32 +59,31 @@
   --color-warning: var(--warning);
   --color-info: var(--info);
   --color-overlay: var(--overlay);
-  --shadow-panel: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 :root {
-  --radius: 14px;
+  --radius: 10px;
 
-  /* Cores Base da Referência */
-  --bg-base: #0B0F17;
-  --bg-surface: #0F141F;
-  --bg-elevated: #151C28;
-  --bg-card: #121824;
-  --bg-card-hover: #182030;
+  /* Paleta Base Profissional */
+  --bg-base: #0A0C10;
+  --bg-surface: #10131B;
+  --bg-elevated: #151A24;
+  --bg-card: #12151E;
+  --bg-card-hover: #171B26;
 
-  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-subtle: rgba(255, 255, 255, 0.06);
   --border-default: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.14);
 
-  /* Acentos */
-  --accent: #6366F1;
-  --accent-light: #818CF8;
-  --accent-dim: rgba(99, 102, 241, 0.12);
+  /* Acento Primário: Slate/Blue de Engenharia */
+  --accent: #3B82F6;
+  --accent-light: #60A5FA;
+  --accent-dim: rgba(59, 130, 246, 0.10);
 
-  /* Secundária: Roxo conforme solicitado */
-  --secondary-purple: #8B5CF6;
+  /* Secundária: Roxo Profundo Elegante (Linear style) */
+  --secondary-purple: #7C3AED;
   --secondary-purple-light: #A78BFA;
-  --secondary-purple-dim: rgba(139, 92, 246, 0.12);
+  --secondary-purple-dim: rgba(124, 58, 237, 0.12);
 
   --success: #10B981;
   --success-dim: rgba(16, 185, 129, 0.10);
@@ -93,76 +91,76 @@
   --warning-dim: rgba(245, 158, 11, 0.10);
   --danger: #EF4444;
   --danger-dim: rgba(239, 68, 68, 0.10);
-  --info: #3B82F6;
-  --info-dim: rgba(59, 130, 246, 0.10);
+  --info: #38BDF8;
+  --info-dim: rgba(56, 189, 248, 0.10);
 
   --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-tertiary: #94A3B8;
-  --text-muted: #64748B;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #64748B;
+  --text-muted: #475569;
 
   /* Mapeamentos Tailwind */
-  --background: #0B0F17;
+  --background: #0A0C10;
   --foreground: #F8FAFC;
-  --card: #121824;
+  --card: #12151E;
   --card-foreground: #F8FAFC;
-  --popover: #0F141F;
+  --popover: #10131B;
   --popover-foreground: #F8FAFC;
-  --primary: #6366F1;
+  --primary: #7C3AED;
   --primary-foreground: #FFFFFF;
-  --secondary: #151C28;
-  --secondary-foreground: #C4B5FD;
-  --muted: #182030;
+  --secondary: #161B27;
+  --secondary-foreground: #E2E8F0;
+  --muted: #151A24;
   --muted-foreground: #94A3B8;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
   --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(0, 0, 0, 0.25);
-  --ring: #6366F1;
-  --chart-1: #6366F1;
+  --input: rgba(0, 0, 0, 0.35);
+  --ring: #7C3AED;
+  --chart-1: #7C3AED;
   --chart-2: #10B981;
-  --chart-3: #8B5CF6;
+  --chart-3: #3B82F6;
   --chart-4: #F59E0B;
   --chart-5: #EF4444;
-  --sidebar: #0F141F;
+  --sidebar: #0E1118;
   --sidebar-foreground: #CBD5E1;
-  --sidebar-primary: #6366F1;
+  --sidebar-primary: #7C3AED;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(99, 102, 241, 0.12);
+  --sidebar-accent: rgba(124, 58, 237, 0.10);
   --sidebar-accent-foreground: #F8FAFC;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #6366F1;
-  --overlay: rgba(0, 0, 0, 0.75);
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-ring: #7C3AED;
+  --overlay: rgba(0, 0, 0, 0.80);
 }
 
 .dark {
-  --background: #0B0F17;
+  --background: #0A0C10;
   --foreground: #F8FAFC;
-  --card: #121824;
+  --card: #12151E;
   --card-foreground: #F8FAFC;
-  --popover: #0F141F;
+  --popover: #10131B;
   --popover-foreground: #F8FAFC;
-  --primary: #6366F1;
+  --primary: #7C3AED;
   --primary-foreground: #FFFFFF;
-  --secondary: #151C28;
-  --secondary-foreground: #C4B5FD;
-  --muted: #182030;
+  --secondary: #161B27;
+  --secondary-foreground: #E2E8F0;
+  --muted: #151A24;
   --muted-foreground: #94A3B8;
-  --accent: rgba(99, 102, 241, 0.12);
+  --accent: rgba(124, 58, 237, 0.10);
   --accent-foreground: #F8FAFC;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
   --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(0, 0, 0, 0.25);
-  --ring: #6366F1;
-  --sidebar: #0F141F;
+  --input: rgba(0, 0, 0, 0.35);
+  --ring: #7C3AED;
+  --sidebar: #0E1118;
   --sidebar-foreground: #CBD5E1;
-  --sidebar-primary: #6366F1;
+  --sidebar-primary: #7C3AED;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(99, 102, 241, 0.12);
+  --sidebar-accent: rgba(124, 58, 237, 0.10);
   --sidebar-accent-foreground: #F8FAFC;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #6366F1;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-ring: #7C3AED;
 }
 
 @layer base {
@@ -180,141 +178,123 @@
   }
 
   ::selection {
-    background: rgba(99, 102, 241, 0.35);
+    background: rgba(124, 58, 237, 0.35);
     color: #FFFFFF;
   }
 }
 
-/* -------------------------------------------------------------
- * 1. Scrollbar
- * ------------------------------------------------------------- */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Scrollbar Minimalista */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.16); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
-/* -------------------------------------------------------------
- * 2. Cards & Vidro Temperado (Glass)
- * ------------------------------------------------------------- */
+/* Cards & Superfícies */
 .card {
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  transition: border-color 0.2s, background-color 0.2s;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  transition: border-color 0.15s, background-color 0.15s;
 }
-.card:hover { border-color: var(--border-default); }
+.card:hover { border-color: var(--border-strong); }
 
 .card-elevated {
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
-.modal-glass {
-  background: rgba(15, 20, 31, 0.94);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
-  border-radius: 20px;
-}
-
-/* -------------------------------------------------------------
- * 3. Botões
- * ------------------------------------------------------------- */
+/* Botões */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 12.5px;
-  border-radius: 10px;
-  padding: 8px 14px;
-  transition: all 0.15s ease;
+  gap: 7px;
+  font-weight: 500;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 7px 13px;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.05s;
   cursor: pointer;
   border: 1px solid transparent;
   white-space: nowrap;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:active:not(:disabled) { transform: scale(0.99); }
 
-.btn-primary {
-  background: #6366F1;
-  color: white;
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
-}
-.btn-primary:hover:not(:disabled) {
-  background: #4F46E5;
-}
-
-.btn-secondary, .btn-purple {
-  background: rgba(139, 92, 246, 0.15);
-  color: #DDD6FE;
-  border-color: rgba(139, 92, 246, 0.3);
-}
-.btn-secondary:hover:not(:disabled), .btn-purple:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.25);
+.btn-primary, .btn-purple {
+  background: #7C3AED;
   color: #FFFFFF;
+  border-color: rgba(124, 58, 237, 0.5);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.btn-primary:hover:not(:disabled), .btn-purple:hover:not(:disabled) {
+  background: #6D28D9;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #E2E8F0;
+  border-color: rgba(255, 255, 255, 0.09);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
   color: var(--text-secondary);
-  border-color: var(--border-subtle);
+  border-color: transparent;
 }
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
-  border-color: var(--border-default);
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: #FCA5A5;
-  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.12);
+  color: #F87171;
+  border-color: rgba(239, 68, 68, 0.25);
 }
 .btn-danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.22);
   color: #FFFFFF;
 }
 
 .btn-success {
   background: rgba(16, 185, 129, 0.12);
-  color: #6EE7B7;
+  color: #34D399;
   border-color: rgba(16, 185, 129, 0.25);
 }
 .btn-success:hover:not(:disabled) {
   background: rgba(16, 185, 129, 0.22);
 }
 
-/* -------------------------------------------------------------
- * 4. Campos de Entrada (Inputs & Textarea)
- * ------------------------------------------------------------- */
+/* Entradas */
 .input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.25);
+  background: #0B0D14;
   border: 1px solid var(--border-default);
-  border-radius: 10px;
-  padding: 9px 13px;
+  border-radius: 8px;
+  padding: 8px 12px;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12.5px;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s;
 }
 .input::placeholder { color: var(--text-muted); }
 .input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: #7C3AED;
 }
 
 .textarea {
   width: 100%;
-  background: rgba(0, 0, 0, 0.25);
+  background: #0B0D14;
   border: 1px solid var(--border-default);
-  border-radius: 10px;
-  padding: 10px 13px;
+  border-radius: 8px;
+  padding: 10px 12px;
   color: var(--text-primary);
   font-size: 12.5px;
   resize: vertical;
@@ -323,144 +303,99 @@
   transition: border-color 0.15s;
 }
 .textarea::placeholder { color: var(--text-muted); }
-.textarea:focus { border-color: var(--accent); }
+.textarea:focus { border-color: #7C3AED; }
 
-/* -------------------------------------------------------------
- * 5. Tipografia e Rótulos
- * ------------------------------------------------------------- */
+/* Tipografia */
 .label {
   display: block;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+.section-title {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin-bottom: 5px;
-}
-.section-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--text-muted);
 }
 .page-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 .page-subtitle {
   font-size: 12.5px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
-/* -------------------------------------------------------------
- * 6. Badges (Sutis, Sem Neon Excessivo)
- * ------------------------------------------------------------- */
+/* Badges (Matte, sem neon) */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 6px;
+  gap: 5px;
+  padding: 2.5px 7.5px;
+  border-radius: 5px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 500;
   border: 1px solid transparent;
 }
-.badge-success { background: rgba(16, 185, 129, 0.10); color: #34D399; border-color: rgba(16, 185, 129, 0.2); }
-.badge-warning { background: rgba(245, 158, 11, 0.10); color: #FCD34D; border-color: rgba(245, 158, 11, 0.2); }
-.badge-danger  { background: rgba(239, 68, 68, 0.10);  color: #F87171; border-color: rgba(239, 68, 68, 0.2); }
-.badge-info    { background: rgba(59, 130, 246, 0.10);  color: #60A5FA; border-color: rgba(59, 130, 246, 0.2); }
-.badge-purple  { background: rgba(139, 92, 246, 0.10); color: #C4B5FD; border-color: rgba(139, 92, 246, 0.2); }
-.badge-muted   { background: rgba(255, 255, 255, 0.05); color: var(--text-tertiary); border-color: var(--border-subtle); }
+.badge-success { background: rgba(16, 185, 129, 0.10); color: #34D399; border-color: rgba(16, 185, 129, 0.22); }
+.badge-warning { background: rgba(245, 158, 11, 0.10); color: #FBBF24; border-color: rgba(245, 158, 11, 0.22); }
+.badge-danger  { background: rgba(239, 68, 68, 0.10);  color: #F87171; border-color: rgba(239, 68, 68, 0.22); }
+.badge-info    { background: rgba(56, 189, 248, 0.10); color: #38BDF8; border-color: rgba(56, 189, 248, 0.22); }
+.badge-purple  { background: rgba(124, 58, 237, 0.12); color: #C4B5FD; border-color: rgba(124, 58, 237, 0.25); }
+.badge-muted   { background: rgba(255, 255, 255, 0.04); color: var(--text-secondary); border-color: var(--border-subtle); }
 
-/* -------------------------------------------------------------
- * 7. Status Dot
- * ------------------------------------------------------------- */
+/* Status Dot (Sólido, sem neon glow) */
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
   display: inline-block;
 }
-.status-dot-connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
-.status-dot-pending   { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
-.status-dot-error     { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.status-dot-connected { background: var(--success); }
+.status-dot-pending   { background: #F59E0B; }
+.status-dot-error     { background: var(--danger); }
 .status-dot-neutral   { background: var(--text-muted); }
 
-/* -------------------------------------------------------------
- * 8. Icon Boxes
- * ------------------------------------------------------------- */
-.icon-box {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.icon-box-accent  { background: rgba(99, 102, 241, 0.12);  color: #818CF8;  border: 1px solid rgba(99, 102, 241, 0.2); }
-.icon-box-purple  { background: rgba(139, 92, 246, 0.12);  color: #C4B5FD;  border: 1px solid rgba(139, 92, 246, 0.2); }
-.icon-box-success { background: rgba(16, 185, 129, 0.10);  color: #34D399;  border: 1px solid rgba(16, 185, 129, 0.2); }
-.icon-box-warning { background: rgba(245, 158, 11, 0.10);  color: #FCD34D;  border: 1px solid rgba(245, 158, 11, 0.2); }
-.icon-box-danger  { background: rgba(239, 68, 68, 0.10);   color: #F87171;  border: 1px solid rgba(239, 68, 68, 0.2); }
-.icon-box-info    { background: rgba(59, 130, 246, 0.10);  color: #60A5FA;  border: 1px solid rgba(59, 130, 246, 0.2); }
-
-/* -------------------------------------------------------------
- * 9. Metric Card
- * ------------------------------------------------------------- */
+/* Metric Card */
 .metric-card {
-  position: relative;
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  padding: 18px 20px;
-  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
-  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 16px 18px;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 .metric-card:hover {
-  border-color: var(--border-default);
-  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
 }
 
-/* -------------------------------------------------------------
- * 10. Tabelas
- * ------------------------------------------------------------- */
+/* Tabelas */
 .table-header {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-default);
   background: rgba(0, 0, 0, 0.2);
 }
 .table-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  transition: background 0.12s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+  transition: background-color 0.1s;
 }
-.table-row:hover { background: rgba(255, 255, 255, 0.025); }
+.table-row:hover { background: rgba(255, 255, 255, 0.02); }
 
-/* -------------------------------------------------------------
- * 11. Animações
- * ------------------------------------------------------------- */
+/* Animações Rápidas */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes pulseSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-.animate-fade-in { animation: fadeIn 0.2s ease forwards; }
-.animate-fade-up { animation: fadeUp 0.25s ease forwards; }
-.animate-slide-right { animation: slideRight 0.25s ease forwards; }
-.animate-spin-slow { animation: spinSlow 1s linear infinite; }
-.animate-pulse-soft { animation: pulseSoft 2s ease-in-out infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-}
+.animate-fade-in { animation: fadeIn 0.15s ease forwards; }
+.animate-fade-up { animation: fadeUp 0.15s ease forwards; }

@@ -23,23 +23,23 @@ export function formatDate(value: Json | undefined) {
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-black/20 px-6 py-12 text-center">
-      <div className="flex size-10 items-center justify-center rounded-xl bg-white/[0.04] text-slate-400 border border-white/[0.06]">
-        <Inbox className="size-5" />
+    <div className="flex flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-white/[0.08] bg-black/10 px-6 py-10 text-center">
+      <div className="flex size-8 items-center justify-center rounded-md bg-white/[0.03] text-zinc-400 border border-white/[0.06]">
+        <Inbox className="size-4" />
       </div>
       <div>
-        <p className="text-xs font-bold text-white">{title}</p>
-        <p className="mt-1 text-[11px] text-slate-400 max-w-sm">{description}</p>
+        <p className="text-xs font-semibold text-zinc-200">{title}</p>
+        <p className="mt-0.5 text-[11px] text-zinc-500 max-w-sm">{description}</p>
       </div>
-      {action}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-6 py-10 text-center">
-      <AlertTriangle className="size-6 text-rose-400" />
+    <div className="flex flex-col items-center justify-center gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-6 py-8 text-center">
+      <AlertTriangle className="size-5 text-rose-400" />
       <p className="max-w-md text-xs text-rose-300">{message}</p>
       {onRetry && <Button size="sm" variant="danger" onClick={onRetry}>Tentar novamente</Button>}
     </div>
@@ -52,8 +52,8 @@ export function LoadingRows({ columns }: { columns: number }) {
       {Array.from({ length: 5 }).map((_, rowIndex) => (
         <tr key={rowIndex} className="table-row">
           {Array.from({ length: columns }).map((__, cellIndex) => (
-            <td key={cellIndex} className="px-3.5 py-3">
-              <div className="h-4 w-full animate-pulse rounded bg-white/[0.04]" />
+            <td key={cellIndex} className="px-3 py-2.5">
+              <div className="h-3.5 w-full animate-pulse rounded bg-white/[0.04]" />
             </td>
           ))}
         </tr>
@@ -120,18 +120,18 @@ export function RecordPanel({
       {...(description ? { description } : {})}
       {...(toolbar ? { action: toolbar } : {})}
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-56 flex-1 max-w-sm items-center gap-2 rounded-xl border border-white/[0.08] bg-[#060911]/70 px-3 py-1.5">
-          <Search className="size-3.5 text-slate-400" />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex min-w-52 flex-1 max-w-sm items-center gap-2 rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 py-1.5">
+          <Search className="size-3.5 text-zinc-500" />
           <input
             value={search}
             onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             placeholder="Filtrar registros..."
-            className="w-full bg-transparent text-xs text-white outline-none placeholder:text-slate-500"
+            className="w-full bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-500"
           />
         </div>
-        <span className="text-[11px] font-medium text-slate-400">
-          {query.isFetching ? <Loader2 className="size-3.5 animate-spin text-indigo-400" /> : `${total} registro(s)`}
+        <span className="text-[11px] font-medium text-zinc-500">
+          {query.isFetching ? <Loader2 className="size-3 animate-spin text-purple-400" /> : `${total} registro(s)`}
         </span>
       </div>
 
@@ -148,7 +148,7 @@ export function RecordPanel({
               rows.map((row, index) => (
                 <tr key={String(row["id"] ?? index)} className="table-row">
                   {columns.map((column) => (
-                    <td key={column.key} className="px-3.5 py-3 text-xs text-slate-300">
+                    <td key={column.key} className="px-3 py-2.5 text-xs text-zinc-300">
                       {column.render
                         ? column.render(row)
                         : column.tone
@@ -161,14 +161,14 @@ export function RecordPanel({
             )}
           </DataTable>
           {pages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-white/[0.05] pt-3">
-              <span className="text-[11px] text-slate-400 font-medium">Página {page} de {pages}</span>
-              <div className="flex gap-2">
+            <div className="mt-3 flex items-center justify-between border-t border-white/[0.05] pt-2.5">
+              <span className="text-[11px] text-zinc-500 font-medium">Página {page} de {pages}</span>
+              <div className="flex gap-1.5">
                 <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
-                  <ChevronLeft className="size-3.5" />Anterior
+                  <ChevronLeft className="size-3" />Anterior
                 </Button>
                 <Button size="sm" variant="ghost" disabled={page >= pages} onClick={() => setPage((value) => value + 1)}>
-                  Próxima<ChevronRight className="size-3.5" />
+                  Próxima<ChevronRight className="size-3" />
                 </Button>
               </div>
             </div>
