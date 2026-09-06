@@ -71,20 +71,59 @@ export async function sendWelcome(target: WelcomeTarget) {
     return { ok: false as const, message: "Configuração necessária: selecione o canal de boas-vindas." };
   }
 
-  const text = (config.message ?? "Bem-vindo, {user}!")
-    .replaceAll("{user}", config.mention_user ? `<@${target.memberId}>` : target.username)
-    .replaceAll("{username}", target.username)
-    .replaceAll("{server}", "SEVEN ROLEPLAY");
+  const defaultDescription = [
+    `Olá <@${target.memberId}>, seja muito bem-vindo(a) à nossa cidade!`,
+    `Prepare seu personagem e venha vivenciar a melhor experiência de Roleplay.\n`,
+    `💬 **Chat Geral:**`,
+    `Converse com os cidadãos em <#1544536484063744142>\n`,
+    `📌 **Primeiros Passos & Links Úteis:**`,
+    `📜 **Regras:** Leia as diretrizes em <#1544535497718898708>`,
+    `📢 **Anúncios:** Acompanhe as novidades em <#1544535994924142672>`,
+    `💡 **Sugestões:** Deixe sua ideia em <#1544539285678587954>`,
+    `👀 **Spoilers:** Veja o que vem por aí em <#1545226668044587079>\n`,
+    `🎫 **Precisa de Ajuda?**`,
+    `Nossa equipe de suporte está sempre à disposição para te atender.`
+  ].join("\n");
+
+  const title = config.banner_title && config.banner_title.trim().length > 0 && config.banner_title !== "BEM-VINDO"
+    ? config.banner_title
+    : "👋 Bem-vindo(a) ao Discord Oficial da SEVEN STATE!";
+
+  const description = (config.message && config.message.length > 20)
+    ? config.message
+        .replaceAll("{user}", `<@${target.memberId}>`)
+        .replaceAll("{username}", target.username)
+        .replaceAll("{server}", "SEVEN STATE ROLEPLAY")
+    : defaultDescription;
+
+  const colorHex = (config.accent_color || "#E63946").replace("#", "");
+  const color = parseInt(colorHex, 16) || 0xE63946;
 
   try {
-    // Banner sorteado da galeria e anexado de verdade na mensagem: nenhuma
-    // "caixa" de embed extra é enviada — só o texto e a imagem.
     const picked = await pickBanner(config.banner_path ?? null);
 
-    const payload = {
-      content: text,
-      allowed_mentions: { users: [target.memberId] },
+    const embed: Record<string, unknown> = {
+      color,
+      title,
+      description,
+      footer: {
+        text: target.memberNumber
+          ? `SEVEN STATE ROLEPLAY • Cidadão nº ${target.memberNumber}`
+          : `SEVEN STATE ROLEPLAY • Divirta-se na cidade!`,
+      },
+      timestamp: new Date().toISOString(),
     };
+
+    if (picked) {
+      embed.image = { url: `attachment://${picked.name}` };
+    }
+
+    const payload = {
+      content: config.mention_user !== false ? `<@${target.memberId}>` : "",
+      allowed_mentions: { users: [target.memberId] },
+      embeds: [embed],
+    };
+
     const message = picked
       ? await createMessageWithFile(channelId, payload, picked)
       : await createMessage(channelId, payload);

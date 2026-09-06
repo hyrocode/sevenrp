@@ -269,7 +269,18 @@ export const sendWelcomeTest = createServerFn({ method: "POST" })
     const { sendWelcome } = await import("./welcome.server");
 
     try {
-      const memberId = data.memberId ?? (await getBotUser()).id;
+      let memberId = data.memberId;
+      if (!memberId) {
+        const { data: realMember } = await context.supabase
+          .from("discord_members")
+          .select("member_id")
+          .eq("guild_id", guild.guild_id)
+          .eq("is_bot", false)
+          .order("synced_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        memberId = realMember?.member_id ?? (await getBotUser()).id;
+      }
       const member = await getGuildMember(guild.guild_id, memberId);
       const avatarUrl = member.user.avatar
         ? `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png?size=256`
