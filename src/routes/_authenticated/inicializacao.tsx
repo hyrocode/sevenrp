@@ -39,7 +39,7 @@ export const Route = createFileRoute("/_authenticated/inicializacao")({
 
 const TEXT_CHANNEL_TYPES = [0, 5, 15, 16];
 const channelKind = (type: number) => (type === 15 || type === 16 ? "fórum" : type === 5 ? "anúncios" : "texto");
-const field = "h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm text-foreground outline-none focus:border-primary";
+const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-[#060911]/70 px-3 text-xs text-white outline-none focus:border-indigo-500 transition-colors";
 
 type Template = {
   id: string;
@@ -517,12 +517,12 @@ function WelcomePanel({
           </select>
         </div>
         <textarea
-          className="min-h-24 w-full rounded-md border border-border bg-secondary p-3 text-sm outline-none focus:border-primary"
+          className="min-h-24 w-full rounded-xl border border-white/[0.08] bg-[#060911]/70 p-3 text-xs text-white outline-none focus:border-indigo-500 transition-colors"
           value={form.message}
           onChange={(e) => setForm({ ...form, message: e.target.value })}
           placeholder="Use {user}, {username} e {server}"
         />
-        <div className="rounded-md border border-border bg-secondary/40 p-3">
+        <div className="rounded-xl border border-white/[0.06] bg-[#0F141F] p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-sm font-medium">Galeria de banners horizontais</p>

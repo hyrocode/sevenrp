@@ -11,7 +11,7 @@ export type Column = {
   key: string;
   label: string;
   render?: (row: Record<string, Json>) => React.ReactNode;
-  tone?: (row: Record<string, Json>) => "success" | "warning" | "danger" | "info" | "muted";
+  tone?: (row: Record<string, Json>) => "success" | "warning" | "danger" | "info" | "purple" | "muted";
 };
 
 export function formatDate(value: Json | undefined) {
@@ -23,9 +23,14 @@ export function formatDate(value: Json | undefined) {
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-secondary/40 px-6 py-12 text-center">
-      <Inbox className="size-6 text-muted-foreground" />
-      <div><p className="text-sm font-medium">{title}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-black/20 px-6 py-12 text-center">
+      <div className="flex size-10 items-center justify-center rounded-xl bg-white/[0.04] text-slate-400 border border-white/[0.06]">
+        <Inbox className="size-5" />
+      </div>
+      <div>
+        <p className="text-xs font-bold text-white">{title}</p>
+        <p className="mt-1 text-[11px] text-slate-400 max-w-sm">{description}</p>
+      </div>
       {action}
     </div>
   );
@@ -33,10 +38,10 @@ export function EmptyState({ title, description, action }: { title: string; desc
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-danger/25 bg-danger/8 px-6 py-10 text-center">
-      <AlertTriangle className="size-6 text-danger" />
-      <p className="max-w-md text-xs text-danger">{message}</p>
-      {onRetry && <Button size="sm" variant="secondary" onClick={onRetry}>Tentar novamente</Button>}
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-6 py-10 text-center">
+      <AlertTriangle className="size-6 text-rose-400" />
+      <p className="max-w-md text-xs text-rose-300">{message}</p>
+      {onRetry && <Button size="sm" variant="danger" onClick={onRetry}>Tentar novamente</Button>}
     </div>
   );
 }
@@ -45,9 +50,11 @@ export function LoadingRows({ columns }: { columns: number }) {
   return (
     <>
       {Array.from({ length: 5 }).map((_, rowIndex) => (
-        <tr key={rowIndex} className="border-b border-border/70">
+        <tr key={rowIndex} className="table-row">
           {Array.from({ length: columns }).map((__, cellIndex) => (
-            <td key={cellIndex} className="px-3 py-3"><div className="h-4 w-full animate-pulse rounded bg-muted" /></td>
+            <td key={cellIndex} className="px-3.5 py-3">
+              <div className="h-4 w-full animate-pulse rounded bg-white/[0.04]" />
+            </td>
           ))}
         </tr>
       ))}
@@ -113,12 +120,19 @@ export function RecordPanel({
       {...(description ? { description } : {})}
       {...(toolbar ? { action: toolbar } : {})}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex min-w-56 flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3">
-          <Search className="size-4 text-muted-foreground" />
-          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Filtrar registros..." className="h-10 w-full bg-transparent text-sm outline-none" />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-56 flex-1 max-w-sm items-center gap-2 rounded-xl border border-white/[0.08] bg-[#060911]/70 px-3 py-1.5">
+          <Search className="size-3.5 text-slate-400" />
+          <input
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+            placeholder="Filtrar registros..."
+            className="w-full bg-transparent text-xs text-white outline-none placeholder:text-slate-500"
+          />
         </div>
-        <span className="text-xs text-muted-foreground">{query.isFetching ? <Loader2 className="size-3.5 animate-spin" /> : `${total} registro(s)`}</span>
+        <span className="text-[11px] font-medium text-slate-400">
+          {query.isFetching ? <Loader2 className="size-3.5 animate-spin text-indigo-400" /> : `${total} registro(s)`}
+        </span>
       </div>
 
       {query.isError ? (
@@ -132,9 +146,9 @@ export function RecordPanel({
               <LoadingRows columns={columns.length} />
             ) : (
               rows.map((row, index) => (
-                <tr key={String(row["id"] ?? index)} className="border-b border-border/70 hover:bg-accent/40">
+                <tr key={String(row["id"] ?? index)} className="table-row">
                   {columns.map((column) => (
-                    <td key={column.key} className="px-3 py-3 text-sm text-muted-foreground">
+                    <td key={column.key} className="px-3.5 py-3 text-xs text-slate-300">
                       {column.render
                         ? column.render(row)
                         : column.tone
@@ -147,11 +161,15 @@ export function RecordPanel({
             )}
           </DataTable>
           {pages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Página {page} de {pages}</span>
+            <div className="mt-4 flex items-center justify-between border-t border-white/[0.05] pt-3">
+              <span className="text-[11px] text-slate-400 font-medium">Página {page} de {pages}</span>
               <div className="flex gap-2">
-                <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft className="size-3.5" />Anterior</Button>
-                <Button size="sm" variant="secondary" disabled={page >= pages} onClick={() => setPage((value) => value + 1)}>Próxima<ChevronRight className="size-3.5" /></Button>
+                <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
+                  <ChevronLeft className="size-3.5" />Anterior
+                </Button>
+                <Button size="sm" variant="ghost" disabled={page >= pages} onClick={() => setPage((value) => value + 1)}>
+                  Próxima<ChevronRight className="size-3.5" />
+                </Button>
               </div>
             </div>
           )}
