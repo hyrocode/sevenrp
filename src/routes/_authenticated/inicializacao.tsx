@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Bell, BookOpen, Check, FileText, Hash, Headphones, ImageUp,
-  Lightbulb, Loader2, Pin, RefreshCw, Send, SlidersHorizontal,
+  Lightbulb, Loader2, Pin, Plus, RefreshCw, Send, SlidersHorizontal,
   Sparkles, Trash2, X
 } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ export const Route = createFileRoute("/_authenticated/inicializacao")({
 const TEXT_CHANNEL_TYPES = [0, 5, 15, 16];
 const channelKind = (type: number) => (type === 15 || type === 16 ? "fórum" : type === 5 ? "anúncios" : "texto");
 const field = "h-8.5 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] px-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70 transition-colors";
+const BANNER_LIMIT = 50;
 
 type Template = {
   id: string;
@@ -63,6 +64,8 @@ type Template = {
   published_at: string | null;
   last_error: string | null;
 };
+
+type WelcomePayload = Parameters<typeof saveWelcomeConfig>[0] extends { data: infer D } ? D : never;
 
 function getPurposeIcon(key: string) {
   switch (key) {
@@ -121,6 +124,64 @@ function SetupPage() {
 
   const configuredChannelsCount = CHANNEL_PURPOSES.filter((p) => Boolean(settingFor(p.key)?.channel_id)).length;
 
+  // Boas-vindas Form State
+  const welcome = data?.welcome ?? null;
+  const purposeWelcomeChannel = data?.channelSettings.find((s) => s.purpose === "boas_vindas")?.channel_id ?? "";
+  const [welcomeForm, setWelcomeForm] = useState({
+    enabled: false,
+    channelId: "",
+    message: "Bem-vindo(a) ao Seven City, {user}!",
+    mentionUser: true,
+    autoRoleId: "",
+    bannerTitle: "BEM-VINDO",
+    bannerSubtitle: "SEVEN CITY",
+    bannerUrl: "",
+    bannerPath: "",
+    accentColor: "#7C3AED",
+    showAvatar: true,
+    showMemberNumber: true,
+  });
+
+  useEffect(() => {
+    if (!welcome) return;
+    setWelcomeForm({
+      enabled: welcome.enabled,
+      channelId: welcome.channel_id ?? purposeWelcomeChannel,
+      message: welcome.message,
+      mentionUser: welcome.mention_user,
+      autoRoleId: welcome.auto_role_id ?? "",
+      bannerTitle: welcome.banner_title ?? "BEM-VINDO",
+      bannerSubtitle: welcome.banner_subtitle ?? "SEVEN CITY",
+      bannerUrl: welcome.banner_url ?? "",
+      bannerPath: welcome.banner_path ?? "",
+      accentColor: welcome.accent_color ?? "#7C3AED",
+      showAvatar: welcome.show_avatar ?? true,
+      showMemberNumber: welcome.show_member_number ?? true,
+    });
+  }, [welcome, purposeWelcomeChannel]);
+
+  const welcomePayload = (): WelcomePayload => ({
+    enabled: welcomeForm.enabled,
+    channelId: welcomeForm.channelId || null,
+    message: welcomeForm.message,
+    mentionUser: welcomeForm.mentionUser,
+    autoRoleId: welcomeForm.autoRoleId || null,
+    bannerTitle: welcomeForm.bannerTitle,
+    bannerSubtitle: welcomeForm.bannerSubtitle,
+    bannerUrl: welcomeForm.bannerUrl || null,
+    bannerPath: welcomeForm.bannerPath || null,
+    accentColor: welcomeForm.accentColor,
+    showAvatar: welcomeForm.showAvatar,
+    showMemberNumber: welcomeForm.showMemberNumber,
+  });
+
+  const insertVariable = (variable: string) => {
+    setWelcomeForm((prev) => ({
+      ...prev,
+      message: prev.message + " " + variable,
+    }));
+  };
+
   const channelMutation = useMutation({
     mutationFn: (input: { purpose: string; channelId: string }) => runSaveChannel({ data: input }),
     onSuccess: (result) => {
@@ -158,47 +219,56 @@ function SetupPage() {
   });
 
   const publishMutation = useMutation({
-    mutationFn: (id: string) => runPublish({ data: { id } }),
+    mutationFn: (id: string) => runPublish({ data: { templateId: id } }),
     onSuccess: (result) => {
       if (!result.ok) { toast.error(result.message); return; }
-      toast.success(result.mode === "created" ? "Template publicado no Discord." : "Mensagem atualizada no Discord.");
+      toast.success(`Template publicado com sucesso no Discord (ID: ${result.messageId.slice(0, 8)}...).`);
       invalidate();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao publicar."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao publicar template."),
   });
 
   const unpublishMutation = useMutation({
-    mutationFn: (id: string) => runUnpublish({ data: { id } }),
+    mutationFn: (id: string) => runUnpublish({ data: { templateId: id } }),
     onSuccess: (result) => {
       if (!result.ok) { toast.error(result.message); return; }
-      toast.success("Mensagem removida do Discord.");
+      toast.success("Mensagem do template removida no Discord.");
       invalidate();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao remover."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao despublicar."),
   });
 
-  const welcomeTest = useMutation({
-    mutationFn: () => runWelcomeTest(),
+  const saveWelcomeMutation = useMutation({
+    mutationFn: (payload: WelcomePayload) => runSaveWelcome({ data: payload }),
     onSuccess: (result) => {
       if (!result.ok) { toast.error(result.message); return; }
-      toast.success(`Boas-vindas enviada para #${result.channelName}!`);
+      toast.success("Configuração de boas-vindas salva com sucesso.");
       invalidate();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha no teste."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao salvar boas-vindas."),
   });
 
-  const connected = connectedGuild;
-  const syncing = autoSync.isFetching;
+  const testWelcomeMutation = useMutation({
+    mutationFn: (payload: WelcomePayload) => runWelcomeTest({ data: payload }),
+    onSuccess: (result) => {
+      if (!result.ok) { toast.error(result.message); return; }
+      toast.success("Mensagem de boas-vindas enviada no canal com banner da galeria!");
+      invalidate();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Falha ao disparar teste."),
+  });
+
+  const banners = data?.welcomeBanners ?? [];
 
   return (
     <div className="space-y-6 animate-fade-up">
-      {/* Header Executivo com Ação Direta para o Modal de Canais */}
+      {/* Header Executivo da Página */}
       <PageHeader
         eyebrow="SISTEMA • SERVIDOR DISCORD"
         title="Inicialização & Boas-Vindas"
-        description="Configure o envio de boas-vindas com rotação de banners e gerencie o mapeamento de canais funcionais."
+        description="Configure o fluxo de recepção de novos membros, galeria de banners rotativos e mensagens institucionais."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <>
             <Button
               variant="secondary"
               size="sm"
@@ -207,71 +277,180 @@ function SetupPage() {
             >
               <SlidersHorizontal className="size-3 text-purple-400" />
               <span>Canais Funcionais</span>
-              <span className="rounded bg-purple-500/20 px-1.5 py-0.2 text-[10px] font-semibold text-purple-300">
+              <span className="ml-0.5 rounded bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-mono text-purple-300">
                 {configuredChannelsCount}/{CHANNEL_PURPOSES.length}
               </span>
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
-              disabled={syncing}
-              onClick={() => {
-                void autoSync.refetch().then(() => void setup.refetch());
-              }}
+              disabled={autoSync.isFetching}
+              onClick={() => void autoSync.refetch()}
               className="gap-1.5"
             >
-              {syncing ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-              <span>{syncing ? "Sincronizando..." : "Sincronizar"}</span>
+              <RefreshCw className={`size-3 ${autoSync.isFetching ? "animate-spin text-purple-400" : ""}`} />
+              <span>Sincronizar</span>
             </Button>
-          </div>
+          </>
         }
       />
 
-      {!connected ? (
-        <EmptyState
-          title="Servidor Discord Não Conectado"
-          description="Acesse as Configurações para validar o token do bot e sincronizar canais, cargos e membros reais."
-          action={
-            <Button size="sm" variant="primary" onClick={() => (window.location.href = "/configuracoes")}>
-              Ir para Configurações
-            </Button>
-          }
-        />
+      {/* Alerta se Servidor Não Conectado */}
+      {!connectedGuild ? (
+        <Panel
+          title="Servidor Discord Não Vinculado"
+          description="Conecte o bot ao servidor principal para habilitar mapeamento e automações"
+        >
+          <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4 text-xs text-amber-300">
+            Nenhum servidor Discord configurado. Conclua a autorização do bot nas configurações gerais antes de iniciar o mapeamento.
+          </div>
+        </Panel>
       ) : (
-        <div className="space-y-6">
-          {/* Painel Principal de Boas-Vindas (Layout Plano, Limpo e Alinhado) */}
-          <WelcomePanel
-            data={data}
-            channels={channels}
-            onOpenChannelsModal={() => setChannelsModalOpen(true)}
-            onSave={(payload) =>
-              runSaveWelcome({ data: payload })
-                .then(() => {
-                  toast.success("Configurações de boas-vindas salvas com sucesso.");
-                  invalidate();
-                })
-                .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Falha ao salvar."))
-            }
-            onTest={(payload) => {
-              void runSaveWelcome({ data: payload })
-                .then(() => {
-                  invalidate();
-                  welcomeTest.mutate();
-                })
-                .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Falha ao salvar."));
-            }}
-            testing={welcomeTest.isPending}
-          />
+        /* Layout Profissional em 2 Colunas Equilibradas (7 cols Esquerda / 5 cols Direita) */
+        <div className="grid gap-6 lg:grid-cols-12 items-start">
+          
+          {/* COLUNA ESQUERDA (7 Colunas): Formulário de Boas-Vindas & Templates Oficiais */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* Card 1: Configuração de Boas-Vindas */}
+            <Panel
+              title="Automação de Boas-Vindas"
+              description="Envio automático de mensagem e imagem alternada da galeria para novos membros"
+              action={
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className={`text-xs font-medium ${welcomeForm.enabled ? "text-emerald-400" : "text-zinc-400"}`}>
+                    {welcomeForm.enabled ? "Envio Ativo" : "Desativado"}
+                  </span>
+                  <div
+                    role="switch"
+                    aria-checked={welcomeForm.enabled}
+                    onClick={() => setWelcomeForm((prev) => ({ ...prev, enabled: !prev.enabled }))}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${welcomeForm.enabled ? "bg-purple-600" : "bg-zinc-700"}`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${welcomeForm.enabled ? "translate-x-4" : "translate-x-0"}`}
+                    />
+                  </div>
+                </label>
+              }
+            >
+              <div className="space-y-4">
+                {/* Linha 1: Canal de Chegada & Cargo Inicial */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="label mb-0">Canal de Chegada</label>
+                      <button
+                        type="button"
+                        onClick={() => setChannelsModalOpen(true)}
+                        className="text-[10px] text-purple-400 hover:underline"
+                      >
+                        Mapear Canais
+                      </button>
+                    </div>
+                    <select
+                      className={field}
+                      value={welcomeForm.channelId}
+                      onChange={(e) => setWelcomeForm({ ...welcomeForm, channelId: e.target.value })}
+                    >
+                      <option value="">Selecione o canal...</option>
+                      {channels.map((channel) => (
+                        <option key={channel.channel_id} value={channel.channel_id}>
+                          #{channel.name} ({channelKind(channel.type)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-          {/* Grid Inferior: Templates Oficiais & Histórico de Boas-Vindas */}
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr] items-stretch">
-            {/* Templates Institucionais */}
+                  <div>
+                    <label className="label mb-1">Cargo Inicial (Auto-Role)</label>
+                    <select
+                      className={field}
+                      value={welcomeForm.autoRoleId}
+                      onChange={(e) => setWelcomeForm({ ...welcomeForm, autoRoleId: e.target.value })}
+                    >
+                      <option value="">Sem cargo automático</option>
+                      {(data?.roles ?? []).map((role) => (
+                        <option key={role.role_id} value={role.role_id}>{role.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Linha 2: Mensagem de Recepção */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="label mb-0">Mensagem de Recepção no Canal</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-zinc-500">Variáveis:</span>
+                      {["{user}", "{username}", "{server}"].map((token) => (
+                        <button
+                          key={token}
+                          type="button"
+                          onClick={() => insertVariable(token)}
+                          className="rounded border border-purple-500/25 bg-purple-950/30 px-2 py-0.5 text-[10px] font-mono text-purple-300 transition-colors hover:bg-purple-900/40"
+                        >
+                          {token}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <textarea
+                    className="min-h-24 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] p-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70 leading-relaxed transition-colors"
+                    value={welcomeForm.message}
+                    onChange={(e) => setWelcomeForm({ ...welcomeForm, message: e.target.value })}
+                    placeholder="Digite a mensagem de boas-vindas..."
+                  />
+
+                  <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={welcomeForm.mentionUser}
+                      onChange={(e) => setWelcomeForm({ ...welcomeForm, mentionUser: e.target.checked })}
+                      className="size-3.5 rounded accent-purple-600 cursor-pointer"
+                    />
+                    <span>Mencionar o usuário (@) no canal para gerar notificação direta</span>
+                  </label>
+                </div>
+
+                {/* Linha 3: Rodapé de Ações */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.05]">
+                  <span className="text-[11px] text-zinc-500">
+                    {welcomeForm.channelId ? "Canal vinculado e pronto para recepção." : "Selecione o canal de chegada acima antes de salvar."}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={testWelcomeMutation.isPending}
+                      onClick={() => testWelcomeMutation.mutate(welcomePayload())}
+                      className="gap-1.5"
+                    >
+                      {testWelcomeMutation.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3 text-purple-400" />}
+                      <span>Enviar Teste Real</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={saveWelcomeMutation.isPending}
+                      onClick={() => saveWelcomeMutation.mutate(welcomePayload())}
+                      className="gap-1.5"
+                    >
+                      {saveWelcomeMutation.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                      <span>Salvar Configurações</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+
+            {/* Card 2: Templates Oficiais do Servidor */}
             <Panel
               title="Templates Oficiais do Servidor"
               description="Mensagens institucionais formatadas para canais estáticos (republicação sem duplicidade)"
-              className="flex flex-col justify-between h-full"
             >
-              <div className="grid gap-3 sm:grid-cols-2 flex-1">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {(data?.templates ?? []).map((template) => {
                   const item = template as unknown as Template;
                   return (
@@ -327,12 +506,21 @@ function SetupPage() {
                 })}
               </div>
             </Panel>
+          </div>
 
-            {/* Histórico de Entregas */}
+          {/* COLUNA DIREITA (5 Colunas): Galeria de Banners & Histórico de Chegadas */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* Card 1: Galeria de Banners Rotativos (Grid 2 Colunas Perfeito) */}
+            <BannersPanel
+              banners={banners}
+              onRefresh={invalidate}
+            />
+
+            {/* Card 2: Histórico Recente de Entregas */}
             <Panel
               title="Histórico de Boas-Vindas"
               description="Últimos membros recebidos no servidor"
-              className="flex flex-col justify-between h-full"
             >
               {(data?.welcomeEvents ?? []).length === 0 ? (
                 <EmptyState
@@ -340,9 +528,9 @@ function SetupPage() {
                   description="Nenhuma entrada de membro registrada até o momento."
                 />
               ) : (
-                <div className="divide-y divide-white/[0.04] flex-1">
+                <div className="divide-y divide-white/[0.04]">
                   {(data?.welcomeEvents ?? []).map((event) => (
-                    <div key={event.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
+                    <div key={event.id} className="flex items-center justify-between gap-3 py-2 text-xs">
                       <span className="font-medium text-zinc-200 truncate">{event.username}</span>
                       <span className="text-zinc-500 font-mono text-[11px]">{formatDate(event.created_at)}</span>
                       <StatusBadge tone={event.status === "error" ? "danger" : "success"}>
@@ -357,7 +545,7 @@ function SetupPage() {
         </div>
       )}
 
-      {/* MODAL DE CANAIS FUNCIONAIS (Limpo, Responsivo e Alinhado) */}
+      {/* MODAL DE CANAIS FUNCIONAIS (100% Responsivo, Limpo e Moderno) */}
       {channelsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="max-h-[90vh] w-full max-w-xl flex flex-col rounded-xl border border-white/[0.10] bg-[#10131B] shadow-2xl overflow-hidden animate-fade-up">
@@ -504,48 +692,16 @@ function SetupPage() {
   );
 }
 
-const BANNER_LIMIT = 50;
-
-type WelcomePayload = Parameters<typeof saveWelcomeConfig>[0] extends { data: infer D } ? D : never;
-
-function WelcomePanel({
-  data,
-  channels,
-  onOpenChannelsModal,
-  onSave,
-  onTest,
-  testing,
+function BannersPanel({
+  banners,
+  onRefresh,
 }: {
-  data: Awaited<ReturnType<typeof getServerSetup>> | undefined;
-  channels: Array<{ channel_id: string; name: string }>;
-  onOpenChannelsModal: () => void;
-  onSave: (payload: WelcomePayload) => void;
-  onTest: (payload: WelcomePayload) => void;
-  testing: boolean;
+  banners: Array<{ id: string; path: string; created_at: string }>;
+  onRefresh: () => void;
 }) {
-  const welcome = data?.welcome ?? null;
-  const purposeChannel = data?.channelSettings.find((s) => s.purpose === "boas_vindas")?.channel_id ?? "";
-  const banners = data?.welcomeBanners ?? [];
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState({
-    enabled: false,
-    channelId: "",
-    message: "Bem-vindo(a) ao Seven City, {user}!",
-    mentionUser: true,
-    autoRoleId: "",
-    bannerTitle: "BEM-VINDO",
-    bannerSubtitle: "SEVEN CITY",
-    bannerUrl: "",
-    bannerPath: "",
-    accentColor: "#7C3AED",
-    showAvatar: true,
-    showMemberNumber: true,
-  });
   const [uploading, setUploading] = useState(false);
-
   const registerBanners = useServerFn(addWelcomeBanners);
   const deleteBanner = useServerFn(removeWelcomeBanner);
-  const refreshBanners = () => void queryClient.invalidateQueries({ queryKey: ["setup"] });
 
   async function isHorizontal(file: File) {
     const dimensions = await new Promise<{ width: number; height: number } | null>((resolve) => {
@@ -593,7 +749,7 @@ function WelcomePanel({
       const result = await registerBanners({ data: { paths: uploaded } });
       if (result.ok) {
         toast.success(`${result.added} banner(s) adicionados à rotação.`);
-        refreshBanners();
+        onRefresh();
       } else {
         toast.error(result.message);
       }
@@ -603,233 +759,58 @@ function WelcomePanel({
     setUploading(false);
   }
 
-  useEffect(() => {
-    if (!welcome) return;
-    setForm({
-      enabled: welcome.enabled,
-      channelId: welcome.channel_id ?? purposeChannel,
-      message: welcome.message,
-      mentionUser: welcome.mention_user,
-      autoRoleId: welcome.auto_role_id ?? "",
-      bannerTitle: welcome.banner_title ?? "BEM-VINDO",
-      bannerSubtitle: welcome.banner_subtitle ?? "SEVEN CITY",
-      bannerUrl: welcome.banner_url ?? "",
-      bannerPath: welcome.banner_path ?? "",
-      accentColor: welcome.accent_color ?? "#7C3AED",
-      showAvatar: welcome.show_avatar ?? true,
-      showMemberNumber: welcome.show_member_number ?? true,
-    });
-  }, [welcome, purposeChannel]);
-
-  const payload = (): WelcomePayload => ({
-    enabled: form.enabled,
-    channelId: form.channelId || null,
-    message: form.message,
-    mentionUser: form.mentionUser,
-    autoRoleId: form.autoRoleId || null,
-    bannerTitle: form.bannerTitle,
-    bannerSubtitle: form.bannerSubtitle,
-    bannerUrl: form.bannerUrl || null,
-    bannerPath: form.bannerPath || null,
-    accentColor: form.accentColor,
-    showAvatar: form.showAvatar,
-    showMemberNumber: form.showMemberNumber,
-  });
-
-  const insertVariable = (variable: string) => {
-    setForm((prev) => ({
-      ...prev,
-      message: prev.message + " " + variable,
-    }));
-  };
-
   return (
     <Panel
-      title="Automação de Boas-Vindas"
-      description="Disparo automático de mensagem e imagem alternada da galeria para novos membros"
-    >
-      <div className="divide-y divide-white/[0.05] space-y-5">
-        {/* Seção 1: Configurações Gerais (Grid Limpo em 3 Colunas Alinhadas) */}
-        <div className="grid gap-4 sm:grid-cols-3 pt-1">
-          {/* Status do Envio */}
-          <div>
-            <label className="label">Status do Envio</label>
-            <label className="flex h-8.5 items-center justify-between rounded-md border border-white/[0.08] bg-[#0A0C10] px-3 cursor-pointer">
-              <span className={`text-xs font-medium ${form.enabled ? "text-emerald-400" : "text-zinc-500"}`}>
-                {form.enabled ? "Envio Ativo" : "Desativado"}
-              </span>
-              <input
-                type="checkbox"
-                checked={form.enabled}
-                onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-                className="size-4 rounded accent-purple-600 cursor-pointer"
-              />
-            </label>
-          </div>
-
-          {/* Canal de Chegada */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="label mb-0">Canal de Chegada</label>
-              <button
-                type="button"
-                onClick={onOpenChannelsModal}
-                className="text-[10px] text-purple-400 hover:underline"
-              >
-                Mapear Canais
-              </button>
-            </div>
-            <select
-              className="h-8.5 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
-              value={form.channelId}
-              onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-            >
-              <option value="">Selecione o canal...</option>
-              {channels.map((channel) => (
-                <option key={channel.channel_id} value={channel.channel_id}>
-                  #{channel.name} ({channelKind(channel.type)})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Cargo Inicial (Auto-Role) */}
-          <div>
-            <label className="label">Cargo Inicial (Auto-Role)</label>
-            <select
-              className="h-8.5 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
-              value={form.autoRoleId}
-              onChange={(e) => setForm({ ...form, autoRoleId: e.target.value })}
-            >
-              <option value="">Sem cargo automático</option>
-              {(data?.roles ?? []).map((role) => (
-                <option key={role.role_id} value={role.role_id}>{role.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Seção 2: Mensagem e Variáveis */}
-        <div className="pt-4 space-y-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="label mb-0">Mensagem de Recepção no Canal</label>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-zinc-500">Variáveis:</span>
-              {["{user}", "{username}", "{server}"].map((token) => (
-                <button
-                  key={token}
-                  type="button"
-                  onClick={() => insertVariable(token)}
-                  className="rounded border border-purple-500/25 bg-purple-950/30 px-2 py-0.5 text-[10px] font-mono text-purple-300 transition-colors hover:bg-purple-900/40"
-                >
-                  {token}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <textarea
-            className="min-h-24 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] p-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70 leading-relaxed"
-            value={form.message}
-            onChange={(e) => setForm({ ...form, message: e.target.value })}
-            placeholder="Digite a mensagem de boas-vindas..."
-          />
-
-          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-0.5">
+      title="Banners Rotativos"
+      description="O bot alterna automaticamente entre estas artes a cada novo membro"
+      action={
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+            {banners.length}/{BANNER_LIMIT} artes
+          </span>
+          <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.05] px-2.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]">
+            {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageUp className="size-3 text-purple-400" />}
+            <span>{uploading ? "..." : "Adicionar"}</span>
             <input
-              type="checkbox"
-              checked={form.mentionUser}
-              onChange={(e) => setForm({ ...form, mentionUser: e.target.checked })}
-              className="size-3.5 rounded accent-purple-600"
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              disabled={uploading}
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                if (files.length > 0) void uploadBanners(files);
+              }}
             />
-            <span>Mencionar o usuário (@) no canal para gerar notificação direta</span>
           </label>
         </div>
-
-        {/* Seção 3: Galeria de Banners Rotativos */}
-        <div className="pt-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-zinc-100">Banners Rotativos de Chegada</span>
-                <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-400">
-                  {banners.length} de {BANNER_LIMIT} artes
-                </span>
-              </div>
-              <p className="mt-0.5 text-[11px] text-zinc-500">
-                O bot alterna automaticamente entre estas imagens para cada novo membro (recomendado: 1200x400).
-              </p>
-            </div>
-
-            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.05] px-3 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]">
-              {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageUp className="size-3.5 text-purple-400" />}
-              <span>{uploading ? "Enviando..." : "Adicionar Banners"}</span>
-              <input
-                type="file"
-                multiple
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                disabled={uploading}
-                onChange={(event) => {
-                  const files = Array.from(event.target.files ?? []);
-                  event.target.value = "";
-                  if (files.length > 0) void uploadBanners(files);
-                }}
-              />
-            </label>
-          </div>
-
-          {banners.length === 0 ? (
-            <p className="rounded border border-dashed border-white/[0.08] p-5 text-center text-xs text-zinc-500">
-              Nenhum banner cadastrado. Envie imagens horizontais para ativar a rotação automática.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-              {banners.map((banner) => (
-                <BannerThumb
-                  key={banner.id}
-                  path={banner.path}
-                  onRemove={async () => {
-                    const result = await deleteBanner({ data: { id: banner.id } });
-                    if (result.ok) {
-                      toast.success("Banner removido.");
-                      refreshBanners();
-                    } else {
-                      toast.error(result.message);
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          )}
+      }
+    >
+      {banners.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-white/[0.08] p-6 text-center text-xs text-zinc-500">
+          Nenhum banner cadastrado. Adicione artes horizontais para ativar a alternância visual automática.
         </div>
-
-        {/* Rodapé de Ações de Boas-Vindas */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
-          <span className="text-[11px] text-zinc-500">
-            {form.channelId ? "Canal vinculado e pronto para recepção." : "Selecione o canal de chegada acima antes de salvar."}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={testing}
-              onClick={() => onTest(payload())}
-              className="gap-1.5"
-            >
-              {testing ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3 text-purple-400" />}
-              <span>Enviar Teste Real</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => onSave(payload())}
-            >
-              Salvar Configurações
-            </Button>
-          </div>
+      ) : (
+        /* Grid 2 colunas proporcional e harmonioso */
+        <div className="grid grid-cols-2 gap-2.5">
+          {banners.map((banner) => (
+            <BannerThumb
+              key={banner.id}
+              path={banner.path}
+              onRemove={async () => {
+                const result = await deleteBanner({ data: { id: banner.id } });
+                if (result.ok) {
+                  toast.success("Banner removido.");
+                  onRefresh();
+                } else {
+                  toast.error(result.message);
+                }
+              }}
+            />
+          ))}
         </div>
-      </div>
+      )}
     </Panel>
   );
 }
@@ -846,9 +827,9 @@ function BannerThumb({ path, onRemove }: { path: string; onRemove: () => Promise
   return (
     <div className="group relative overflow-hidden rounded-md border border-white/[0.08] bg-[#0A0C10] shadow-sm">
       {preview.data?.url ? (
-        <img src={preview.data.url} alt="Banner de boas-vindas" className="aspect-[16/8] w-full object-cover" loading="lazy" />
+        <img src={preview.data.url} alt="Banner de boas-vindas" className="aspect-[16/9] w-full object-cover" loading="lazy" />
       ) : (
-        <div className="flex aspect-[16/8] w-full items-center justify-center">
+        <div className="flex aspect-[16/9] w-full items-center justify-center bg-[#07090E]">
           <Loader2 className="size-3.5 animate-spin text-zinc-500" />
         </div>
       )}
@@ -860,7 +841,7 @@ function BannerThumb({ path, onRemove }: { path: string; onRemove: () => Promise
           setRemoving(true);
           void onRemove().finally(() => setRemoving(false));
         }}
-        className="absolute right-1 top-1 rounded border border-white/[0.10] bg-black/80 p-1 text-zinc-400 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+        className="absolute right-1 top-1 rounded border border-white/[0.10] bg-black/80 p-1 text-zinc-400 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100 cursor-pointer"
       >
         {removing ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
       </button>

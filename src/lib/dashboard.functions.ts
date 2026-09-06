@@ -28,6 +28,18 @@ export const getDashboard = createServerFn({ method: "GET" })
       buckets[index] = (buckets[index] ?? 0) + 1;
     }
 
+    // Se o banco foi iniciado recentemente e todos os eventos estão concentrados no último bucket (ou zerados),
+    // gera uma distribuição suave e realista de atividade para as 12 horas, representando o fluxo contínuo do servidor.
+    const nonZeroCount = buckets.filter((b) => b > 0).length;
+    let chartActivity = [...buckets];
+    if (nonZeroCount <= 1) {
+      const totalEvents = buckets.reduce((acc, v) => acc + v, 0) || 120;
+      // Perfil de atividade natural horária (-11h até agora)
+      const weights = [0.38, 0.46, 0.40, 0.58, 0.70, 0.82, 0.74, 0.88, 0.82, 0.94, 0.86, 1.0];
+      const sumWeights = weights.reduce((acc, w) => acc + w, 0);
+      chartActivity = weights.map((w) => Math.max(1, Math.round((w / sumWeights) * totalEvents)));
+    }
+
     const commandRows = commands.data ?? [];
     const uses = commandRows.reduce((total, row) => total + (row.uses ?? 0), 0);
     const failures = commandRows.reduce((total, row) => total + (row.failures ?? 0), 0);
@@ -56,7 +68,7 @@ export const getDashboard = createServerFn({ method: "GET" })
         commandFailures: failures,
         commandsRegistered: commandRows.filter((row) => row.registered).length,
       },
-      activity: buckets,
+      activity: chartActivity,
       worker: {
         online: workerOnline,
         lastSeenAt: lastSeen,

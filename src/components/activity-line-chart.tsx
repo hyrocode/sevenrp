@@ -6,7 +6,7 @@ interface ActivityLineChartProps {
 }
 
 /**
- * Gráfico de Linhas Monotônico (Fritsch-Carlson) com interpolação suave
+ * Gráfico de Linhas Monotônico (Fritsch-Carlson) com interpolação cúbica suave
  * e garantia matemática de que a curva nunca oscila abaixo de zero nem ultrapassa picos.
  */
 function getMonotonePath(points: Array<{ x: number; y: number }>) {
@@ -80,11 +80,12 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
   const rawPeak = Math.max(...pointsData);
   const peak = Math.max(1, rawPeak);
   const totalEvents = pointsData.reduce((acc, val) => acc + val, 0);
+  const averageHourly = Math.round(totalEvents / pointsData.length);
 
-  // Dimensões SVG perfeitamente ajustadas
+  // Dimensões SVG perfeitamente calibradas
   const width = 640;
   const height = 180;
-  const paddingLeft = 46;
+  const paddingLeft = 42;
   const paddingRight = 18;
   const paddingTop = 16;
   const paddingBottom = 26;
@@ -114,10 +115,10 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
   ];
 
   const timeLabels = [
-    { label: "-12h", idx: 0 },
-    { label: "-9h", idx: 3 },
-    { label: "-6h", idx: 6 },
-    { label: "-3h", idx: 9 },
+    { label: "-11h", idx: 0 },
+    { label: "-8h", idx: 3 },
+    { label: "-5h", idx: 6 },
+    { label: "-2h", idx: 9 },
     { label: "Agora", idx: 11 },
   ];
 
@@ -143,12 +144,12 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
 
   const activePoint = hoverIndex !== null ? coords[hoverIndex] : null;
   const hoursAgo = activePoint ? 11 - activePoint.idx : 0;
-  const hourText = hoursAgo === 0 ? "Agora (últimos 60 min)" : `Há ${hoursAgo}h`;
+  const hourText = hoursAgo === 0 ? "Agora (últimos 60 min)" : `Há ${hoursAgo}h atrás`;
 
   return (
     <div className={`relative flex flex-col justify-between h-full w-full ${className ?? ""}`}>
       {/* Header com Estatísticas Alinhadas */}
-      <div className="mb-3 flex items-center justify-between border-b border-white/[0.05] pb-2.5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.05] pb-2.5">
         <div className="flex items-center gap-4">
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
@@ -169,31 +170,44 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
               <span className="text-xs font-normal text-zinc-400">eventos/h</span>
             </p>
           </div>
+          <div className="h-6 w-px bg-white/[0.07]" />
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Média
+            </span>
+            <p className="text-sm font-semibold text-zinc-300">
+              ~{averageHourly.toLocaleString("pt-BR")}{" "}
+              <span className="text-xs font-normal text-zinc-400">eventos/h</span>
+            </p>
+          </div>
         </div>
 
         {activePoint ? (
-          <div className="flex items-center gap-2 rounded-md border border-purple-500/30 bg-[#161824] px-2.5 py-1 text-xs">
-            <span className="size-1.5 rounded-full bg-purple-400" />
+          <div className="flex items-center gap-2 rounded-md border border-purple-500/30 bg-[#141724] px-2.5 py-1 text-xs">
+            <span className="size-1.5 rounded-full bg-purple-400 animate-pulse" />
             <span className="font-semibold text-white">{activePoint.val} eventos</span>
             <span className="text-[11px] text-zinc-400">({hourText})</span>
           </div>
         ) : (
-          <span className="text-[11px] text-zinc-500">Passe o mouse para inspecionar</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            <span>Fluxo Contínuo • Passe o mouse para inspecionar</span>
+          </div>
         )}
       </div>
 
-      {/* Área do Gráfico SVG */}
+      {/* Área do Gráfico SVG Monotônico */}
       <div className="relative w-full">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-44 select-none overflow-visible"
+          className="w-full h-44 select-none overflow-visible cursor-crosshair"
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.30" />
-              <stop offset="65%" stopColor="#7C3AED" stopOpacity="0.06" />
+              <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.28" />
+              <stop offset="60%" stopColor="#7C3AED" stopOpacity="0.06" />
               <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
             </linearGradient>
           </defs>
@@ -237,6 +251,23 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
             strokeLinejoin="round"
           />
 
+          {/* Pontos de dados sutis ao longo da linha */}
+          {coords.map((pt) => {
+            const isHovered = hoverIndex === pt.idx;
+            return (
+              <circle
+                key={pt.idx}
+                cx={pt.x}
+                cy={pt.y}
+                r={isHovered ? 4.5 : 2}
+                fill={isHovered ? "#C4B5FD" : "#8B5CF6"}
+                stroke="#0A0C10"
+                strokeWidth={isHovered ? 2 : 1}
+                className="transition-all duration-150"
+              />
+            );
+          })}
+
           {/* Indicador no Hover */}
           {activePoint && (
             <g>
@@ -252,14 +283,14 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
               <circle
                 cx={activePoint.x}
                 cy={activePoint.y}
-                r="6.5"
+                r="7"
                 fill="rgba(139, 92, 246, 0.25)"
               />
               <circle
                 cx={activePoint.x}
                 cy={activePoint.y}
                 r="3.5"
-                fill="#7C3AED"
+                fill="#8B5CF6"
                 stroke="#FFFFFF"
                 strokeWidth="1.5"
               />
