@@ -809,6 +809,25 @@ function BannersPanel({
               }}
             />
           ))}
+          {banners.length % 2 !== 0 && (
+            <label className="flex aspect-[16/9] w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-white/[0.12] bg-white/[0.02] p-2 text-center transition-colors hover:border-purple-500/40 hover:bg-purple-950/10">
+              <ImageUp className="size-4 text-purple-400 mb-1" />
+              <span className="text-[11px] font-medium text-zinc-300">Nova Arte</span>
+              <span className="text-[9px] text-zinc-500">1200x400</span>
+              <input
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                disabled={uploading}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  if (files.length > 0) void uploadBanners(files);
+                }}
+              />
+            </label>
+          )}
         </div>
       )}
     </Panel>
