@@ -76,37 +76,31 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
   const gradientId = useId();
 
   // 12 pontos horários (-11h até agora)
-  const hourlyData = data && data.length === 12 ? data : Array.from({ length: 12 }, () => 28);
+  const pointsData = data && data.length === 12 ? data : Array.from({ length: 12 }, () => 24);
+  const rawPeak = Math.max(...pointsData, 10);
+  const totalEvents = pointsData.reduce((acc, val) => acc + val, 0);
+  const averageHourly = Math.round(totalEvents / pointsData.length);
 
-  // Curva de evolução acumulada (sobe suavemente da esquerda para a direita, exatamente como no print de referência)
-  const cumulativeData = hourlyData.reduce<number[]>((acc, val, i) => {
-    const base = i === 0 ? Math.max(15, Math.round(val * 0.65)) : acc[i - 1];
-    return [...acc, base + val];
-  }, []);
+  // Escala vertical com folga de 15% no topo para estética refinada
+  const yMax = Math.ceil(rawPeak * 1.15);
 
-  const totalEvents = cumulativeData[cumulativeData.length - 1] ?? 450;
-  const minVal = cumulativeData[0] ?? 20;
-  const maxVal = Math.max(...cumulativeData, 100);
-
-  // Dimensões SVG panorâmicas (widescreen)
+  // Dimensões SVG panorâmicas calibradas
   const width = 1000;
   const height = 230;
-  const paddingLeft = 14;
-  const paddingRight = 14;
-  const paddingTop = 26;
-  const paddingBottom = 34;
+  const paddingLeft = 44;
+  const paddingRight = 16;
+  const paddingTop = 22;
+  const paddingBottom = 32;
 
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
   const bottomY = paddingTop + chartHeight;
 
-  // Normalização vertical suave: linha parte da base esquerda e atinge o topo direito
-  const valueRange = maxVal - minVal * 0.75;
-  const coords = cumulativeData.map((val, idx) => {
-    const x = paddingLeft + (idx / (cumulativeData.length - 1)) * chartWidth;
-    const normalized = (val - minVal * 0.75) / (valueRange || 1);
-    const y = paddingTop + chartHeight - normalized * chartHeight;
-    return { x, y, val, hourlyVal: hourlyData[idx] ?? 0, idx };
+  // Coordenadas calculadas para o fluxo operacional contínuo
+  const coords = pointsData.map((val, idx) => {
+    const x = paddingLeft + (idx / (pointsData.length - 1)) * chartWidth;
+    const y = paddingTop + chartHeight - (val / (yMax || 1)) * chartHeight;
+    return { x, y, val, idx };
   });
 
   const linePath = getMonotonePath(coords);
@@ -114,12 +108,12 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
   const firstPoint = coords[0];
   const areaPath = `${linePath} L ${lastPoint.x.toFixed(1)} ${bottomY.toFixed(1)} L ${firstPoint.x.toFixed(1)} ${bottomY.toFixed(1)} Z`;
 
-  // Linhas horizontais sutis tracejadas de referência no fundo
-  const gridYLevels = [
-    paddingTop + 10,
-    paddingTop + chartHeight * 0.35,
-    paddingTop + chartHeight * 0.7,
-    bottomY,
+  // Linhas horizontais de referência com valores
+  const midVal = Math.round(yMax / 2);
+  const gridLevels = [
+    { label: String(yMax), y: paddingTop },
+    { label: String(midVal), y: paddingTop + chartHeight / 2 },
+    { label: "0", y: bottomY },
   ];
 
   const timeLabels = [
@@ -127,7 +121,7 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
     { label: "-9h", idx: 3 },
     { label: "-6h", idx: 6 },
     { label: "-3h", idx: 9 },
-    { label: "Atual", idx: 11 },
+    { label: "Agora", idx: 11 },
   ];
 
   function handlePointerMove(event: React.PointerEvent<SVGSVGElement>) {
@@ -152,44 +146,62 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
 
   const activePoint = hoverIndex !== null ? coords[hoverIndex] : null;
   const hoursAgo = activePoint ? 11 - activePoint.idx : 0;
-  const hourText = hoursAgo === 0 ? "Atual (últimos 60 min)" : `Há ${hoursAgo}h`;
+  const hourText = hoursAgo === 0 ? "Agora (últimos 60 min)" : `Há ${hoursAgo}h`;
 
   return (
     <div className={`relative w-full rounded-xl border border-white/[0.08] bg-[#0A0C10] p-6 shadow-2xl transition-all ${className ?? ""}`}>
-      {/* Top Header Panorâmico (Idêntico ao print de exemplo do usuário) */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4">
-        {/* Esquerda: EVOLUÇÃO e VOLUME DE EVENTOS & ATIVIDADE */}
+      {/* Header Autêntico do Gráfico Operacional da SEVEN CITY */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
+        {/* Esquerda: Identificação do Gráfico */}
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
-            EVOLUÇÃO
-          </span>
-          <h2 className="mt-0.5 text-base sm:text-lg font-black tracking-tight text-white uppercase">
-            VOLUME DE EVENTOS & ATIVIDADE
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400">
+              TELEMETRIA DISCORD
+            </span>
+            <span className="size-1 rounded-full bg-white/20" />
+            <span className="text-[10px] font-medium text-zinc-500">
+              Servidor Oficial
+            </span>
+          </div>
+          <h2 className="mt-0.5 text-base sm:text-lg font-bold tracking-tight text-white">
+            Atividade Operacional
           </h2>
+          <p className="text-xs text-zinc-400">
+            Fluxo contínuo de eventos, comandos e moderação registrados nas últimas 12 horas.
+          </p>
         </div>
 
-        {/* Direita: Legenda com bolinha branca + Pill de Temporada/Período */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
-            <span className="size-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]" />
-            <span>Eventos ativos</span>
+        {/* Direita: Métricas e Indicador em Tempo Real */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Tempo Real</span>
           </div>
 
-          <div className="rounded-full border border-white/[0.12] bg-white/[0.04] px-3.5 py-1 text-xs text-zinc-300 font-medium select-none">
-            Últimas 12 horas
+          <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
+            Total: <span className="font-semibold text-white">{totalEvents}</span> eventos
+          </div>
+
+          <div className="rounded-full border border-purple-500/25 bg-purple-950/30 px-3 py-1 text-xs text-purple-300">
+            Pico: <span className="font-semibold text-purple-200">{rawPeak}</span>/h
+          </div>
+
+          <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-zinc-400">
+            Média: ~{averageHourly}/h
           </div>
 
           {activePoint && (
-            <div className="flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-950/40 px-3 py-1 text-xs text-purple-200">
-              <span className="font-semibold text-white">{activePoint.val} acumulados</span>
-              <span className="text-[11px] text-zinc-400">({hourText})</span>
+            <div className="flex items-center gap-1.5 rounded-full border border-purple-500/40 bg-purple-900/40 px-3 py-1 text-xs text-purple-100 animate-fade-in">
+              <span className="size-1.5 rounded-full bg-purple-300" />
+              <span className="font-semibold">{activePoint.val} eventos</span>
+              <span className="text-purple-300/80 text-[11px]">({hourText})</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Gráfico SVG Panorâmico de Ponta a Ponta */}
-      <div className="relative w-full overflow-hidden">
+      {/* Área do Gráfico SVG Panorâmico com o Roxo como Secundária */}
+      <div className="relative mt-4 w-full overflow-hidden">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-56 sm:h-64 select-none cursor-crosshair overflow-visible"
@@ -197,40 +209,69 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
           onPointerLeave={handlePointerLeave}
         >
           <defs>
-            {/* Gradiente idêntico ao print: topo iluminado em branco/roxo suave descendo para transparente */}
+            {/* Gradiente Roxo Elegante (Linear / Vercel style) */}
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.20" />
-              <stop offset="40%" stopColor="#A78BFA" stopOpacity="0.08" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.25" />
+              <stop offset="60%" stopColor="#7C3AED" stopOpacity="0.06" />
+              <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
-          {/* Linhas de Grade Horizontais Ultra Discretas */}
-          {gridYLevels.map((y, i) => (
-            <line
-              key={i}
-              x1={paddingLeft}
-              y1={y}
-              x2={width - paddingRight}
-              y2={y}
-              stroke="rgba(255, 255, 255, 0.05)"
-              strokeDasharray="2 4"
-              strokeWidth="1"
-            />
+          {/* Linhas de Grade Horizontais com Valores no Eixo Y */}
+          {gridLevels.map((lvl, i) => (
+            <g key={i}>
+              <line
+                x1={paddingLeft}
+                y1={lvl.y}
+                x2={width - paddingRight}
+                y2={lvl.y}
+                stroke="rgba(255, 255, 255, 0.06)"
+                strokeDasharray="3 4"
+                strokeWidth="1"
+              />
+              <text
+                x={paddingLeft - 8}
+                y={lvl.y + 3.5}
+                fill="#71717A"
+                fontSize="10"
+                fontFamily="inherit"
+                fontWeight="500"
+                textAnchor="end"
+              >
+                {lvl.label}
+              </text>
+            </g>
           ))}
 
           {/* Área Gradiente Preenchida */}
           <path d={areaPath} fill={`url(#${gradientId})`} />
 
-          {/* Linha Curva Contínua e Ascendente (Branco Puro / Alta Definição) */}
+          {/* Curva Monotônica em Roxo Profundo com Brilho Refinado */}
           <path
             d={linePath}
             fill="none"
-            stroke="#FFFFFF"
-            strokeWidth="2.4"
+            stroke="#8B5CF6"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+
+          {/* Pontos discretos ao longo da linha */}
+          {coords.map((pt) => {
+            const isHovered = hoverIndex === pt.idx;
+            return (
+              <circle
+                key={pt.idx}
+                cx={pt.x}
+                cy={pt.y}
+                r={isHovered ? 5 : 2.5}
+                fill={isHovered ? "#C4B5FD" : "#8B5CF6"}
+                stroke="#0A0C10"
+                strokeWidth={isHovered ? 2.5 : 1}
+                className="transition-all duration-150"
+              />
+            );
+          })}
 
           {/* Indicador no Hover */}
           {activePoint && (
@@ -240,7 +281,7 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
                 y1={paddingTop}
                 x2={activePoint.x}
                 y2={bottomY}
-                stroke="rgba(255, 255, 255, 0.35)"
+                stroke="rgba(167, 139, 250, 0.45)"
                 strokeDasharray="3 3"
                 strokeWidth="1.2"
               />
@@ -248,20 +289,20 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
                 cx={activePoint.x}
                 cy={activePoint.y}
                 r="7"
-                fill="rgba(255, 255, 255, 0.25)"
+                fill="rgba(139, 92, 246, 0.25)"
               />
               <circle
                 cx={activePoint.x}
                 cy={activePoint.y}
                 r="3.5"
-                fill="#FFFFFF"
+                fill="#A78BFA"
                 stroke="#0A0C10"
                 strokeWidth="1.5"
               />
             </g>
           )}
 
-          {/* Rótulos de Tempo no Eixo X (Alinhamento Idêntico ao print: Fev, Mar, Abr, Mai, Atual) */}
+          {/* Rótulos de Tempo no Eixo X */}
           {timeLabels.map((item, i) => {
             const pt = coords[item.idx];
             return (
