@@ -74,21 +74,16 @@ export async function sendWelcome(target: WelcomeTarget) {
   const defaultDescription = [
     `Olá <@${target.memberId}>, seja muito bem-vindo(a) à nossa comunidade!`,
     `O **Seven City** está a todo vapor em fase de desenvolvimento. Ficamos muito felizes em ter você aqui desde o início acompanhando cada passo do nosso projeto.\n`,
-    `💬 **Converse com a Comunidade:**`,
-    `Participe do nosso bate-papo em <#1544536484063744142>\n`,
     `📌 **Acompanhe o Projeto:**`,
-    `📢 **Anúncios:** Fique por dentro de tudo em <#1544535994924142672>`,
     `📰 **Novidades:** Veja atualizações do projeto em <#1545226562998108201>`,
-    `👀 **Spoilers:** Confira prévias e bastidores em <#1545226668044587079>`,
-    `💡 **Sugestões:** Deixe sua ideia para a cidade em <#1544539285678587954>`,
-    `📜 **Regras:** Respeite a convivência em <#1544535497718898708>`
+    `👀 **Spoilers:** Confira prévias e bastidores em <#1545226668044587079>`
   ].join("\n");
 
   const title = config.banner_title && config.banner_title.trim().length > 0 && config.banner_title !== "BEM-VINDO" && !config.banner_title.includes("Oficial")
     ? config.banner_title
     : "👋 Bem-vindo(a) ao Seven City!";
 
-  const description = (config.message && config.message.length > 20 && !config.message.includes("Suporte"))
+  const description = (config.message && config.message.length > 20 && !config.message.includes("Suporte") && !config.message.includes("Chat Geral"))
     ? config.message
         .replaceAll("{user}", `<@${target.memberId}>`)
         .replaceAll("{username}", target.username)
