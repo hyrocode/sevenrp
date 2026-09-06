@@ -99,11 +99,12 @@ function Dashboard() {
         />
       </div>
 
-      {/* Atividade Operacional (Gráfico em Linhas Moderno) & Saúde da Integração */}
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr]">
+      {/* Atividade Operacional (Gráfico em Linhas Monotônico) & Saúde da Integração */}
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr] items-stretch">
         <Panel
           title="Atividade Operacional"
           description="Fluxo contínuo de eventos registrados nas últimas 12 horas"
+          className="flex flex-col justify-between h-full"
         >
           <ActivityLineChart data={activity} />
         </Panel>
@@ -111,8 +112,9 @@ function Dashboard() {
         <Panel
           title="Saúde da Integração"
           description="Status dos conectores e do gateway"
+          className="flex flex-col justify-between h-full"
         >
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1">
             {/* Status Worker */}
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#0B0D14] p-3">
               <div className="flex items-center gap-2.5">
@@ -159,10 +161,11 @@ function Dashboard() {
       </div>
 
       {/* Auditoria Recente & Módulos */}
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_.6fr] items-stretch">
         <Panel
           title="Últimas Ações Administrativas"
           description="Auditoria operacional de eventos registrados"
+          className="flex flex-col justify-between h-full"
           action={
             <Button asChild size="sm" variant="ghost">
               <Link to="/logs" className="gap-1">
@@ -219,8 +222,9 @@ function Dashboard() {
         <Panel
           title="Acessos Rápidos"
           description="Navegação direta para as seções"
+          className="flex flex-col justify-between h-full"
         >
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 flex-1">
             {[
               [ShieldCheck, "Moderação", "/moderacao"],
               [Ticket, "Tickets", "/tickets"],

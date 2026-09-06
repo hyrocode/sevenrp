@@ -64,7 +64,6 @@ type Template = {
   last_error: string | null;
 };
 
-// Ícone semântico para cada finalidade de canal
 function getPurposeIcon(key: string) {
   switch (key) {
     case "regras": return BookOpen;
@@ -117,7 +116,6 @@ function SetupPage() {
   const channels = useMemo(() => (data?.channels ?? []).filter((c) => TEXT_CHANNEL_TYPES.includes(c.type)), [data]);
   const settingFor = (purpose: string) => data?.channelSettings.find((s) => s.purpose === purpose) ?? null;
 
-  // Estados de Modais
   const [channelsModalOpen, setChannelsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Template | null>(null);
 
@@ -194,11 +192,11 @@ function SetupPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      {/* Header Executivo */}
+      {/* Header Executivo com Ação Direta para o Modal de Canais */}
       <PageHeader
         eyebrow="SISTEMA • SERVIDOR DISCORD"
         title="Inicialização & Boas-Vindas"
-        description="Gerenciamento de canais funcionais, automação de boas-vindas com banners dinâmicos e templates oficiais."
+        description="Configure o envio de boas-vindas com rotação de banners e gerencie o mapeamento de canais funcionais."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -207,7 +205,7 @@ function SetupPage() {
               onClick={() => setChannelsModalOpen(true)}
               className="gap-1.5"
             >
-              <Hash className="size-3 text-purple-400" />
+              <SlidersHorizontal className="size-3 text-purple-400" />
               <span>Canais Funcionais</span>
               <span className="rounded bg-purple-500/20 px-1.5 py-0.2 text-[10px] font-semibold text-purple-300">
                 {configuredChannelsCount}/{CHANNEL_PURPOSES.length}
@@ -223,7 +221,7 @@ function SetupPage() {
               className="gap-1.5"
             >
               {syncing ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-              <span>{syncing ? "Sincronizando..." : "Sincronizar Canais"}</span>
+              <span>{syncing ? "Sincronizando..." : "Sincronizar"}</span>
             </Button>
           </div>
         }
@@ -241,37 +239,7 @@ function SetupPage() {
         />
       ) : (
         <div className="space-y-6">
-          {/* Card Resumo de Canais Funcionais (Abertura do Modal) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-[#11141D] p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-purple-500/30 bg-purple-950/30 text-purple-300">
-                <SlidersHorizontal className="size-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-semibold text-zinc-100">Canais Funcionais do Servidor</h3>
-                  <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
-                    {configuredChannelsCount} de {CHANNEL_PURPOSES.length} mapeados
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[11px] text-zinc-400">
-                  Defina onde o bot enviará boas-vindas, regras, anúncios, avisos de moderação e tickets.
-                </p>
-              </div>
-            </div>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setChannelsModalOpen(true)}
-              className="shrink-0 gap-1.5 self-start sm:self-center"
-            >
-              <SlidersHorizontal className="size-3 text-purple-400" />
-              <span>Configurar Canais no Modal</span>
-            </Button>
-          </div>
-
-          {/* Automação de Boas-Vindas (Seção Principal com Destaque e Organização) */}
+          {/* Painel Principal de Boas-Vindas (Layout Plano, Limpo e Alinhado) */}
           <WelcomePanel
             data={data}
             channels={channels}
@@ -279,7 +247,7 @@ function SetupPage() {
             onSave={(payload) =>
               runSaveWelcome({ data: payload })
                 .then(() => {
-                  toast.success("Configurações de boas-vindas salvas.");
+                  toast.success("Configurações de boas-vindas salvas com sucesso.");
                   invalidate();
                 })
                 .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Falha ao salvar."))
@@ -295,14 +263,15 @@ function SetupPage() {
             testing={welcomeTest.isPending}
           />
 
-          {/* Grid Inferior: Templates Oficiais & Histórico de Entregas */}
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+          {/* Grid Inferior: Templates Oficiais & Histórico de Boas-Vindas */}
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr] items-stretch">
             {/* Templates Institucionais */}
             <Panel
               title="Templates Oficiais do Servidor"
               description="Mensagens institucionais formatadas para canais estáticos (republicação sem duplicidade)"
+              className="flex flex-col justify-between h-full"
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 flex-1">
                 {(data?.templates ?? []).map((template) => {
                   const item = template as unknown as Template;
                   return (
@@ -363,6 +332,7 @@ function SetupPage() {
             <Panel
               title="Histórico de Boas-Vindas"
               description="Últimos membros recebidos no servidor"
+              className="flex flex-col justify-between h-full"
             >
               {(data?.welcomeEvents ?? []).length === 0 ? (
                 <EmptyState
@@ -370,7 +340,7 @@ function SetupPage() {
                   description="Nenhuma entrada de membro registrada até o momento."
                 />
               ) : (
-                <div className="divide-y divide-white/[0.04]">
+                <div className="divide-y divide-white/[0.04] flex-1">
                   {(data?.welcomeEvents ?? []).map((event) => (
                     <div key={event.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
                       <span className="font-medium text-zinc-200 truncate">{event.username}</span>
@@ -387,7 +357,7 @@ function SetupPage() {
         </div>
       )}
 
-      {/* MODAL DE CANAIS FUNCIONAIS (Responsividade Total, Limpo e Organizado) */}
+      {/* MODAL DE CANAIS FUNCIONAIS (Limpo, Responsivo e Alinhado) */}
       {channelsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="max-h-[90vh] w-full max-w-xl flex flex-col rounded-xl border border-white/[0.10] bg-[#10131B] shadow-2xl overflow-hidden animate-fade-up">
@@ -395,11 +365,11 @@ function SetupPage() {
             <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-7 items-center justify-center rounded-md border border-purple-500/30 bg-purple-950/30 text-purple-300">
-                  <Hash className="size-3.5" />
+                  <SlidersHorizontal className="size-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-zinc-100">Mapeamento de Canais Funcionais</h3>
-                  <p className="text-[11px] text-zinc-400">Vincule os canais reais do Discord para cada finalidade do bot.</p>
+                  <h3 className="text-sm font-semibold text-zinc-100">Canais Funcionais do Discord</h3>
+                  <p className="text-[11px] text-zinc-400">Vincule os canais reais do servidor para cada rotina do bot.</p>
                 </div>
               </div>
               <button
@@ -410,7 +380,7 @@ function SetupPage() {
               </button>
             </div>
 
-            {/* Body Modal (Lista com Rolagem Suave) */}
+            {/* Body Modal */}
             <div className="flex-1 overflow-y-auto p-5 divide-y divide-white/[0.04]">
               {CHANNEL_PURPOSES.map((purpose) => {
                 const current = settingFor(purpose.key);
@@ -678,18 +648,15 @@ function WelcomePanel({
       title="Automação de Boas-Vindas"
       description="Disparo automático de mensagem e imagem alternada da galeria para novos membros"
     >
-      <div className="space-y-5">
-        {/* Linha 1: Configurações Principais em 3 Colunas Perfeitamente Alinhadas */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* 1. Ativação */}
-          <div className="flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3">
-            <div>
-              <p className="text-xs font-semibold text-zinc-100">Status da Automação</p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">Enviar boas-vindas na entrada de novos membros</p>
-            </div>
-            <label className="mt-3 flex items-center justify-between cursor-pointer border-t border-white/[0.04] pt-2">
+      <div className="divide-y divide-white/[0.05] space-y-5">
+        {/* Seção 1: Configurações Gerais (Grid Limpo em 3 Colunas Alinhadas) */}
+        <div className="grid gap-4 sm:grid-cols-3 pt-1">
+          {/* Status do Envio */}
+          <div>
+            <label className="label">Status do Envio</label>
+            <label className="flex h-8.5 items-center justify-between rounded-md border border-white/[0.08] bg-[#0A0C10] px-3 cursor-pointer">
               <span className={`text-xs font-medium ${form.enabled ? "text-emerald-400" : "text-zinc-500"}`}>
-                {form.enabled ? "Ativo" : "Desativado"}
+                {form.enabled ? "Envio Ativo" : "Desativado"}
               </span>
               <input
                 type="checkbox"
@@ -700,27 +667,24 @@ function WelcomePanel({
             </label>
           </div>
 
-          {/* 2. Canal de Chegada */}
-          <div className="flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-zinc-100">Canal de Chegada</p>
-                <button
-                  type="button"
-                  onClick={onOpenChannelsModal}
-                  className="text-[10px] text-purple-400 hover:underline"
-                >
-                  Mapear Canais
-                </button>
-              </div>
-              <p className="mt-0.5 text-[11px] text-zinc-500">Onde a mensagem será publicada</p>
+          {/* Canal de Chegada */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Canal de Chegada</label>
+              <button
+                type="button"
+                onClick={onOpenChannelsModal}
+                className="text-[10px] text-purple-400 hover:underline"
+              >
+                Mapear Canais
+              </button>
             </div>
             <select
-              className="mt-2 h-8.5 w-full rounded-md border border-white/[0.08] bg-[#10131B] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+              className="h-8.5 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
               value={form.channelId}
               onChange={(e) => setForm({ ...form, channelId: e.target.value })}
             >
-              <option value="">Selecione o canal de chegada...</option>
+              <option value="">Selecione o canal...</option>
               {channels.map((channel) => (
                 <option key={channel.channel_id} value={channel.channel_id}>
                   #{channel.name} ({channelKind(channel.type)})
@@ -729,14 +693,11 @@ function WelcomePanel({
             </select>
           </div>
 
-          {/* 3. Cargo Inicial (Auto-Role) */}
-          <div className="flex flex-col justify-between rounded-lg border border-white/[0.07] bg-[#0A0C10] p-3">
-            <div>
-              <p className="text-xs font-semibold text-zinc-100">Cargo Inicial (Auto-Role)</p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">Atribuído automaticamente ao entrar</p>
-            </div>
+          {/* Cargo Inicial (Auto-Role) */}
+          <div>
+            <label className="label">Cargo Inicial (Auto-Role)</label>
             <select
-              className="mt-2 h-8.5 w-full rounded-md border border-white/[0.08] bg-[#10131B] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+              className="h-8.5 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] px-2.5 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
               value={form.autoRoleId}
               onChange={(e) => setForm({ ...form, autoRoleId: e.target.value })}
             >
@@ -748,12 +709,12 @@ function WelcomePanel({
           </div>
         </div>
 
-        {/* Linha 2: Mensagem e Menção */}
-        <div className="rounded-lg border border-white/[0.07] bg-[#0A0C10] p-4 space-y-3">
+        {/* Seção 2: Mensagem e Variáveis */}
+        <div className="pt-4 space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-semibold text-zinc-100">Mensagem de Boas-Vindas</label>
+            <label className="label mb-0">Mensagem de Recepção no Canal</label>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-zinc-500">Variáveis dinâmicas:</span>
+              <span className="text-[10px] text-zinc-500">Variáveis:</span>
               {["{user}", "{username}", "{server}"].map((token) => (
                 <button
                   key={token}
@@ -768,35 +729,35 @@ function WelcomePanel({
           </div>
 
           <textarea
-            className="min-h-24 w-full rounded-md border border-white/[0.08] bg-[#10131B] p-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70"
+            className="min-h-24 w-full rounded-md border border-white/[0.08] bg-[#0A0C10] p-3 text-xs text-zinc-200 outline-none focus:border-purple-500/70 leading-relaxed"
             value={form.message}
             onChange={(e) => setForm({ ...form, message: e.target.value })}
             placeholder="Digite a mensagem de boas-vindas..."
           />
 
-          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-1">
+          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-0.5">
             <input
               type="checkbox"
               checked={form.mentionUser}
               onChange={(e) => setForm({ ...form, mentionUser: e.target.checked })}
               className="size-3.5 rounded accent-purple-600"
             />
-            <span>Mencionar o usuário no canal para gerar notificação direta</span>
+            <span>Mencionar o usuário (@) no canal para gerar notificação direta</span>
           </label>
         </div>
 
-        {/* Linha 3: Galeria de Banners Rotativos */}
-        <div className="rounded-lg border border-white/[0.07] bg-[#0A0C10] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.05]">
+        {/* Seção 3: Galeria de Banners Rotativos */}
+        <div className="pt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-zinc-100">Galeria de Banners da Cidade</p>
-                <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
-                  {banners.length} de {BANNER_LIMIT} imagens
+                <span className="text-xs font-semibold text-zinc-100">Banners Rotativos de Chegada</span>
+                <span className="rounded bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                  {banners.length} de {BANNER_LIMIT} artes
                 </span>
               </div>
               <p className="mt-0.5 text-[11px] text-zinc-500">
-                O bot alterna automaticamente entre estas artes a cada novo membro (proporção recomendada: 1200x400).
+                O bot alterna automaticamente entre estas imagens para cada novo membro (recomendado: 1200x400).
               </p>
             </div>
 
@@ -819,11 +780,11 @@ function WelcomePanel({
           </div>
 
           {banners.length === 0 ? (
-            <p className="mt-4 rounded border border-dashed border-white/[0.08] p-6 text-center text-xs text-zinc-500">
+            <p className="rounded border border-dashed border-white/[0.08] p-5 text-center text-xs text-zinc-500">
               Nenhum banner cadastrado. Envie imagens horizontais para ativar a rotação automática.
             </p>
           ) : (
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
               {banners.map((banner) => (
                 <BannerThumb
                   key={banner.id}
@@ -844,9 +805,9 @@ function WelcomePanel({
         </div>
 
         {/* Rodapé de Ações de Boas-Vindas */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-white/[0.05]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
           <span className="text-[11px] text-zinc-500">
-            {form.channelId ? "Canal vinculado e pronto para disparo." : "Atenção: selecione o canal de chegada antes de salvar."}
+            {form.channelId ? "Canal vinculado e pronto para recepção." : "Selecione o canal de chegada acima antes de salvar."}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -885,9 +846,9 @@ function BannerThumb({ path, onRemove }: { path: string; onRemove: () => Promise
   return (
     <div className="group relative overflow-hidden rounded-md border border-white/[0.08] bg-[#0A0C10] shadow-sm">
       {preview.data?.url ? (
-        <img src={preview.data.url} alt="Banner de boas-vindas" className="aspect-[16/7] w-full object-cover" loading="lazy" />
+        <img src={preview.data.url} alt="Banner de boas-vindas" className="aspect-[16/8] w-full object-cover" loading="lazy" />
       ) : (
-        <div className="flex aspect-[16/7] w-full items-center justify-center">
+        <div className="flex aspect-[16/8] w-full items-center justify-center">
           <Loader2 className="size-3.5 animate-spin text-zinc-500" />
         </div>
       )}
@@ -899,7 +860,7 @@ function BannerThumb({ path, onRemove }: { path: string; onRemove: () => Promise
           setRemoving(true);
           void onRemove().finally(() => setRemoving(false));
         }}
-        className="absolute right-1.5 top-1.5 rounded border border-white/[0.10] bg-black/80 p-1 text-zinc-400 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+        className="absolute right-1 top-1 rounded border border-white/[0.10] bg-black/80 p-1 text-zinc-400 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
       >
         {removing ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
       </button>
