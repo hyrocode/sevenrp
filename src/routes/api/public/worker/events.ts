@@ -13,10 +13,11 @@ const schema = z.object({
   authorId: z.string().max(32).optional(),
   authorLabel: z.string().max(120).optional(),
   guildId: z.string().max(32).optional(),
-  avatarUrl: z.string().url().max(300).optional(),
+  avatarUrl: z.string().max(500).nullish(),
   memberNumber: z.number().int().min(0).optional(),
   messageId: z.string().max(32).optional(),
   messageLink: z.string().url().max(300).optional(),
+  alreadySent: z.boolean().optional(),
   term: z.string().max(120).optional(),
   confidence: z.number().min(0).max(1).optional(),
   contentType: z.enum(["image", "video", "text", "link"]).optional(),
@@ -41,6 +42,19 @@ export const Route = createFileRoute("/api/public/worker/events")({
 
         if (event.type === "member_join") {
           if (!event.guildId || !event.authorId) return new Response("Payload inválido", { status: 400 });
+
+          if (event.alreadySent) {
+            await supabaseAdmin.from("welcome_events").insert({
+              guild_id: event.guildId,
+              member_id: event.authorId,
+              username: event.authorLabel ?? "Novo membro",
+              status: "sent",
+              message_id: event.messageId ?? null,
+              channel_id: event.channelId ?? "1545352442160611469",
+            });
+            return Response.json({ ok: true, direct: true });
+          }
+
           const { sendWelcome } = await import("@/lib/welcome.server");
           const result = await sendWelcome({
             guildId: event.guildId,
