@@ -83,7 +83,7 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
   });
 
   const formatXAxisTick = (index: number) => {
-    const isMobile = windowWidth < 640;
+    const isMobile = (typeof window !== "undefined" ? window.innerWidth : windowWidth) < 640;
     if (index === 0) return "-12h";
     if (index === 11) return "Agora";
     if (index === 6) return "-6h";
@@ -147,7 +147,7 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
-              margin={{ top: 12, right: 8, left: -22, bottom: 0 }}
+              margin={{ top: 12, right: 10, left: -22, bottom: 0 }}
             >
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -170,7 +170,7 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={formatXAxisTick}
-                tick={{ fill: "#71717A", fontSize: 11, fontWeight: 500 }}
+                tick={{ fill: "#A1A1AA", fontSize: 11, fontWeight: 500 }}
                 dy={6}
                 interval={0}
               />
@@ -179,7 +179,7 @@ export function ActivityLineChart({ data, className }: ActivityLineChartProps) {
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#71717A", fontSize: 10, fontWeight: 500 }}
+                tick={{ fill: "#A1A1AA", fontSize: 10, fontWeight: 500 }}
                 domain={[0, yMax]}
                 ticks={[0, midVal, yMax]}
                 width={36}
