@@ -289,7 +289,7 @@ async function resolveTrack(query) {
     ...(spotify || youtube || {}),
     id: playable.id,
     streamUrl: playable.streamUrl,
-    source: `Jamendo${spotify ? " • info Spotify" : youtube ? " • info YouTube" : ""}`,
+    source: `${playable.source}${spotify ? " • info Spotify" : youtube ? " • info YouTube" : ""}`,
     sourceUrl: playable.sourceUrl || spotify?.sourceUrl || youtube?.sourceUrl || "",
   };
 }
