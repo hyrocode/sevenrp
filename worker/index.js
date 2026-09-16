@@ -4,7 +4,19 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Client, GatewayIntentBits, AttachmentBuilder, EmbedBuilder } from "discord.js";
+import {
+  ActivityType,
+  Client,
+  GatewayIntentBits,
+  AttachmentBuilder,
+  EmbedBuilder,
+} from "discord.js";
+import {
+  VoiceConnectionStatus,
+  entersState,
+  getVoiceConnection,
+  joinVoiceChannel,
+} from "@discordjs/voice";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const bannersDir = path.join(__dirname, "banners");
@@ -42,13 +54,20 @@ const DASHBOARD_URL = cleanEnv(process.env.DASHBOARD_URL).replace(/\/+$/, "");
 const WORKER_ID = cleanEnv(process.env.WORKER_ID) || "render-worker-01";
 const SELF_URL = cleanEnv(process.env.RENDER_EXTERNAL_URL) || "https://seven-discord-worker.onrender.com";
 const WELCOME_CHANNEL_ID = cleanEnv(process.env.WELCOME_CHANNEL_ID) || "1545352442160611469";
+const VOICE_CHANNEL_ID = cleanEnv(process.env.VOICE_CHANNEL_ID) || "1544539183748620328";
+const VOICE_CHANNEL_STATUS = cleanEnv(process.env.VOICE_CHANNEL_STATUS) || "Preparando Cidade...";
+const VOICE_RECONNECT_DELAY_MS = 5000;
+const VOICE_HEALTHCHECK_INTERVAL_MS = 5 * 60 * 1000;
+const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
 
 if (!DISCORD_BOT_TOKEN) {
   console.error("ERRO: Variável DISCORD_BOT_TOKEN não definida.");
   process.exit(1);
 }
 
-console.log(`[Config] Token carregado (comprimento: ${DISCORD_BOT_TOKEN.length}, canal boas-vindas: ${WELCOME_CHANNEL_ID})`);
+console.log(
+  `[Config] Token carregado (comprimento: ${DISCORD_BOT_TOKEN.length}, canal boas-vindas: ${WELCOME_CHANNEL_ID}, canal de voz: ${VOICE_CHANNEL_ID})`
+);
 
 // -------------------------------------------------------------
 // 1. Servidor HTTP & KeepAlive (Impede que o Render Free durma)
@@ -63,6 +82,10 @@ const server = http.createServer((req, res) => {
         uptimeSeconds: Math.floor(process.uptime()),
         discordConnected: client.isReady(),
         pingMs: client.isReady() ? client.ws.ping : null,
+        voiceChannelId: VOICE_CHANNEL_ID,
+        voiceChannelStatus: VOICE_CHANNEL_STATUS,
+        voiceConnected:
+          voiceConnection?.state.status === VoiceConnectionStatus.Ready,
         bannersCount: bannerFiles.length,
       })
     );
@@ -100,11 +123,156 @@ setInterval(pingSelf, 3 * 60 * 1000);
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
 });
+
+// -------------------------------------------------------------
+// 3. Conexão persistente no canal de voz
+// -------------------------------------------------------------
+let voiceConnection = null;
+let voiceGuildId = "";
+let voiceReconnectTimer = null;
+let voiceConnectInFlight = null;
+
+function scheduleVoiceReconnect(reason, delayMs = VOICE_RECONNECT_DELAY_MS) {
+  if (!client.isReady() || voiceReconnectTimer) return;
+
+  console.warn(`[Voz] Reconexão agendada em ${delayMs}ms: ${reason}`);
+  voiceReconnectTimer = setTimeout(() => {
+    voiceReconnectTimer = null;
+    connectToVoiceChannel().catch((error) => {
+      console.error("[Voz] Falha na tentativa de reconexão:", error.message);
+    });
+  }, delayMs);
+}
+
+async function setVoiceChannelStatus() {
+  if (!client.isReady()) return false;
+
+  try {
+    const response = await fetch(
+      `${DISCORD_API_BASE_URL}/channels/${VOICE_CHANNEL_ID}/voice-status`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: VOICE_CHANNEL_STATUS }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(
+        `[Voz] Não foi possível definir o status do canal (${response.status}): ${errorText}`
+      );
+      return false;
+    }
+
+    console.log(`[Voz] Status do canal atualizado para: ${VOICE_CHANNEL_STATUS}`);
+    return true;
+  } catch (error) {
+    console.warn("[Voz] Erro de rede ao atualizar o status do canal:", error.message);
+    return false;
+  }
+}
+
+function attachVoiceConnectionHandlers(connection) {
+  if (connection.__sevenHandlersAttached) return;
+  connection.__sevenHandlersAttached = true;
+
+  connection.on(VoiceConnectionStatus.Ready, () => {
+    console.log(`[Voz] ✅ Conectado ao canal ${VOICE_CHANNEL_ID}.`);
+    setVoiceChannelStatus().catch((error) => {
+      console.warn("[Voz] Falha ao reaplicar o status do canal:", error.message);
+    });
+  });
+
+  connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    console.warn("[Voz] Conexão de voz interrompida; tentando recuperar...");
+
+    try {
+      await Promise.race([
+        entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+        entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+      ]);
+      console.log("[Voz] Conexão de voz recuperada sem recriar a sessão.");
+    } catch {
+      if (connection.state.status !== VoiceConnectionStatus.Destroyed) {
+        connection.destroy();
+      }
+      scheduleVoiceReconnect("a sessão de voz não se recuperou");
+    }
+  });
+
+  connection.on(VoiceConnectionStatus.Destroyed, () => {
+    console.warn("[Voz] Sessão destruída; uma nova conexão será criada.");
+    scheduleVoiceReconnect("a sessão foi destruída");
+  });
+
+  connection.on("error", (error) => {
+    console.error("[Voz] Erro na conexão de voz:", error.message);
+  });
+}
+
+async function connectToVoiceChannel() {
+  if (!client.isReady()) return;
+  if (voiceConnectInFlight) return voiceConnectInFlight;
+
+  voiceConnectInFlight = (async () => {
+    try {
+      const channel = await client.channels.fetch(VOICE_CHANNEL_ID);
+      if (!channel || !channel.isVoiceBased() || !channel.guildId) {
+        throw new Error(`O canal ${VOICE_CHANNEL_ID} não é um canal de voz válido.`);
+      }
+
+      const guild = channel.guild || (await client.guilds.fetch(channel.guildId));
+      voiceGuildId = guild.id;
+
+      const existingConnection = getVoiceConnection(guild.id);
+      const connection =
+        existingConnection && existingConnection.state.status !== VoiceConnectionStatus.Destroyed
+          ? existingConnection
+          : joinVoiceChannel({
+              channelId: channel.id,
+              guildId: guild.id,
+              adapterCreator: guild.voiceAdapterCreator,
+              selfDeaf: true,
+              selfMute: true,
+            });
+
+      voiceConnection = connection;
+      attachVoiceConnectionHandlers(connection);
+      await entersState(connection, VoiceConnectionStatus.Ready, 15000);
+      await setVoiceChannelStatus();
+    } catch (error) {
+      console.error("[Voz] Falha ao conectar ao canal configurado:", error.message);
+      scheduleVoiceReconnect("a conexão inicial falhou");
+    } finally {
+      voiceConnectInFlight = null;
+    }
+  })();
+
+  return voiceConnectInFlight;
+}
+
+async function ensureVoiceConnection() {
+  if (!client.isReady()) return;
+
+  const currentConnection = voiceGuildId ? getVoiceConnection(voiceGuildId) : voiceConnection;
+  if (currentConnection?.state.status === VoiceConnectionStatus.Ready) {
+    voiceConnection = currentConnection;
+    await setVoiceChannelStatus();
+    return;
+  }
+
+  await connectToVoiceChannel();
+}
 
 // -------------------------------------------------------------
 // 3. Helpers de Comunicação com o Dashboard
@@ -303,6 +471,20 @@ async function sendWelcomeDirect(member) {
 client.once("ready", () => {
   console.log(`[Discord] Bot conectado como ${client.user.tag}!`);
   console.log(`[Discord] Servidores conectados: ${client.guilds.cache.size}`);
+
+  client.user.setPresence({
+    status: "online",
+    activities: [{ name: VOICE_CHANNEL_STATUS, type: ActivityType.Playing }],
+  });
+
+  connectToVoiceChannel().catch((error) => {
+    console.error("[Voz] Falha ao iniciar a conexão persistente:", error.message);
+  });
+  setInterval(() => {
+    ensureVoiceConnection().catch((error) => {
+      console.error("[Voz] Falha na verificação periódica:", error.message);
+    });
+  }, VOICE_HEALTHCHECK_INTERVAL_MS);
 
   // Dispara o primeiro heartbeat imediatamente
   sendHeartbeat();
