@@ -4,6 +4,7 @@ import ffmpegPath from "ffmpeg-static";
 
 const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
 const JAMENDO_API_URL = "https://api.jamendo.com/v3.0/tracks/";
+const AUDIUS_API_URL = "https://discoveryprovider.audius.co/v1";
 const MUSIC_RETURN_DELAY_MS = 5000;
 const SEARCH_TIMEOUT_MS = 7000;
 
@@ -88,7 +89,14 @@ function allowedDirectUrl(value) {
   if (configuredDomains.length > 0) {
     return configuredDomains.some((domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
   }
-  return url.hostname === "jamendo.com" || url.hostname.endsWith(".jamendo.com");
+  return (
+    url.hostname === "jamendo.com" ||
+    url.hostname.endsWith(".jamendo.com") ||
+    url.hostname === "audius.co" ||
+    url.hostname.endsWith(".audius.co") ||
+    url.hostname === "staked.cloud" ||
+    url.hostname.endsWith(".staked.cloud")
+  );
 }
 
 function directTrack(url) {
@@ -230,6 +238,34 @@ async function searchJamendo(query) {
   }
 }
 
+async function searchAudius(query) {
+  try {
+    const url = new URL(`${AUDIUS_API_URL}/tracks/search`);
+    url.searchParams.set("query", query);
+    url.searchParams.set("limit", "5");
+    const data = await fetchJson(url);
+    const item = data?.data?.find((track) => track?.id && track?.is_streamable !== false);
+    if (!item) return null;
+    const artwork = item.artwork || {};
+    const permalink = String(item.permalink || "").trim();
+    return {
+      id: `audius:${item.id}`,
+      title: item.title || query,
+      artist: item.user?.name || "Artista desconhecido",
+      album: item.album?.album_name || "",
+      year: item.release_date?.slice(0, 4) || "",
+      durationMs: Number(item.duration || 0) * 1000,
+      artworkUrl: artwork["1000x1000"] || artwork["480x480"] || artwork["150x150"] || "",
+      source: "Audius",
+      sourceUrl: permalink ? `https://audius.co${permalink.startsWith("/") ? permalink : `/${permalink}`}` : "",
+      streamUrl: `${AUDIUS_API_URL}/tracks/${encodeURIComponent(item.id)}/stream`,
+    };
+  } catch (error) {
+    console.warn(`[Música] Busca Audius indisponível: ${error.message}`);
+    return null;
+  }
+}
+
 async function resolveTrack(query) {
   const normalizedQuery = String(query || "").trim();
   if (!normalizedQuery) throw new Error("Informe o nome ou o link da música.");
@@ -243,12 +279,9 @@ async function resolveTrack(query) {
 
   const [spotify, youtube] = await Promise.all([searchSpotify(normalizedQuery), searchYouTube(normalizedQuery)]);
   const searchTerm = spotify ? `${spotify.title} ${spotify.artist}` : normalizedQuery;
-  const playable = await searchJamendo(searchTerm);
+  const playable = (await searchAudius(searchTerm)) || (await searchJamendo(searchTerm));
   if (!playable) {
-    if (!env("JAMENDO_CLIENT_ID")) {
-      throw new Error("A busca está pronta, mas falta configurar JAMENDO_CLIENT_ID no Render para habilitar a reprodução autorizada.");
-    }
-    throw new Error("Não encontrei uma faixa reproduzível nessa fonte autorizada.");
+    throw new Error("Não encontrei uma faixa reproduzível nas fontes autorizadas agora. Tente outro nome.");
   }
 
   return {
