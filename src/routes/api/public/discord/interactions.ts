@@ -25,6 +25,44 @@ async function verifySignature(publicKey: string, signature: string, timestamp: 
   }
 }
 
+const MUSIC_COMMAND_NAMES = new Set([
+  "play",
+  "pause",
+  "resume",
+  "avancar",
+  "stop",
+  "fila",
+  "agora",
+  "volume",
+  "loop",
+  "shuffle",
+  "remove",
+  "sair",
+]);
+
+function isMusicInteraction(interaction: { type?: number; data?: { name?: string; custom_id?: string } }) {
+  if (interaction.type === 2) return MUSIC_COMMAND_NAMES.has(interaction.data?.name ?? "");
+  return interaction.type === 3 && interaction.data?.custom_id?.startsWith("music:");
+}
+
+async function forwardMusicInteraction(body: string) {
+  const workerUrl = (process.env["DISCORD_WORKER_URL"] || "https://seven-discord-worker.onrender.com").replace(/\/+$/, "");
+  const workerSecret = process.env["WORKER_SHARED_SECRET"] || "";
+  try {
+    const response = await fetch(`${workerUrl}/api/discord/interactions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-worker-secret": workerSecret },
+      body,
+      signal: AbortSignal.timeout(2500),
+    });
+    const payload = await response.text();
+    if (!response.ok) throw new Error(`worker respondeu ${response.status}`);
+    return new Response(payload, { status: 200, headers: { "Content-Type": "application/json" } });
+  } catch {
+    return Response.json({ type: 4, data: { content: "O sistema de música está iniciando. Tente novamente em alguns segundos.", flags: 64 } });
+  }
+}
+
 export const Route = createFileRoute("/api/public/discord/interactions")({
   server: {
     handlers: {
@@ -41,12 +79,13 @@ export const Route = createFileRoute("/api/public/discord/interactions")({
 
         const interaction = JSON.parse(body) as {
           type: number;
-          data?: { name?: string };
+          data?: { name?: string; custom_id?: string };
           member?: { user?: { id: string; username: string } };
           user?: { id: string; username: string };
         };
 
         if (interaction.type === 1) return Response.json({ type: 1 });
+        if (isMusicInteraction(interaction)) return forwardMusicInteraction(body);
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const commandName = interaction.data?.name ?? "desconhecido";

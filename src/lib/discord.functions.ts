@@ -197,6 +197,18 @@ export const COMMAND_BLUEPRINT = [
   { name: "punir", description: "Aplica uma punição a um membro", category: "moderacao" },
   { name: "infos", description: "Mostra informações do servidor", category: "servidor" },
   { name: "saldo", description: "Consulta o saldo do membro", category: "economia" },
+  { name: "play", description: "Busca e adiciona uma música à fila", category: "musica", options: [{ type: 3, name: "consulta", description: "Nome da música ou link autorizado", required: true, max_length: 200 }] },
+  { name: "pause", description: "Pausa a música atual", category: "musica" },
+  { name: "resume", description: "Continua a música pausada", category: "musica" },
+  { name: "avancar", description: "Avança para a próxima música", category: "musica" },
+  { name: "stop", description: "Para a música e retorna ao canal de espera", category: "musica" },
+  { name: "fila", description: "Mostra a fila de músicas", category: "musica" },
+  { name: "agora", description: "Mostra a música atual", category: "musica" },
+  { name: "volume", description: "Ajusta o volume da música", category: "musica", options: [{ type: 4, name: "nivel", description: "Volume entre 0 e 100", required: true, min_value: 0, max_value: 100 }] },
+  { name: "loop", description: "Configura a repetição da fila", category: "musica", options: [{ type: 3, name: "modo", description: "Modo de repetição", required: true, choices: [{ name: "Desligado", value: "off" }, { name: "Música atual", value: "track" }, { name: "Fila", value: "queue" }] }] },
+  { name: "shuffle", description: "Embaralha a fila", category: "musica" },
+  { name: "remove", description: "Remove uma posição da fila", category: "musica", options: [{ type: 4, name: "posicao", description: "Posição na fila", required: true, min_value: 1, max_value: 100 }] },
+  { name: "sair", description: "Retorna ao canal de espera", category: "musica" },
 ] as const;
 
 /** Registro real dos slash commands via REST (funciona sem gateway). */
@@ -216,9 +228,21 @@ export const registerSlashCommands = createServerFn({ method: "POST" })
     if (!config?.guild_id) return { ok: false as const, message: "Sincronize um servidor antes de registrar comandos." };
 
     const { data: stored } = await context.supabase.from("bot_commands").select("*").eq("enabled", true);
-    const source = (stored ?? []).length
-      ? (stored ?? []).map((c) => ({ name: c.name, description: c.description || c.name, type: 1 }))
-      : COMMAND_BLUEPRINT.map((c) => ({ name: c.name, description: c.description, type: 1 }));
+    const storedCommands = new Map((stored ?? []).map((command) => [command.name, command]));
+    const source = COMMAND_BLUEPRINT.map((blueprint) => {
+      const storedCommand = storedCommands.get(blueprint.name);
+      return {
+        name: blueprint.name,
+        description: storedCommand?.description || blueprint.description,
+        type: 1,
+        ...(blueprint.options ? { options: blueprint.options } : {}),
+      };
+    });
+    for (const command of stored ?? []) {
+      if (!source.some((item) => item.name === command.name)) {
+        source.push({ name: command.name, description: command.description || command.name, type: 1 });
+      }
+    }
 
     try {
       const bot = await getBotUser();

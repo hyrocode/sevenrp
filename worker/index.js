@@ -17,6 +17,7 @@ import {
   getVoiceConnection,
   joinVoiceChannel,
 } from "@discordjs/voice";
+import { MUSIC_COMMAND_DEFINITIONS, MUSIC_COMMAND_NAMES, MusicManager } from "./music.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const bannersDir = path.join(__dirname, "banners");
@@ -59,6 +60,7 @@ const VOICE_CHANNEL_STATUS = cleanEnv(process.env.VOICE_CHANNEL_STATUS) || "Prep
 const VOICE_RECONNECT_DELAY_MS = 5000;
 const VOICE_HEALTHCHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
+let musicManager = null;
 
 if (!DISCORD_BOT_TOKEN) {
   console.error("ERRO: Variável DISCORD_BOT_TOKEN não definida.");
@@ -69,10 +71,52 @@ console.log(
   `[Config] Token carregado (comprimento: ${DISCORD_BOT_TOKEN.length}, canal boas-vindas: ${WELCOME_CHANNEL_ID}, canal de voz: ${VOICE_CHANNEL_ID})`
 );
 
+function readRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+function isMusicInteraction(interaction) {
+  if (interaction?.type === 2) return MUSIC_COMMAND_NAMES.has(interaction.data?.name);
+  return interaction?.type === 3 && String(interaction.data?.custom_id || "").startsWith("music:");
+}
+
 // -------------------------------------------------------------
 // 1. Servidor HTTP & KeepAlive (Impede que o Render Free durma)
 // -------------------------------------------------------------
 const server = http.createServer((req, res) => {
+  if (req.method === "POST" && req.url === "/api/discord/interactions") {
+    readRequestBody(req)
+      .then((body) => {
+        const providedSecret = String(req.headers["x-worker-secret"] || "");
+        if (!WORKER_SHARED_SECRET || providedSecret.length !== WORKER_SHARED_SECRET.length || providedSecret !== WORKER_SHARED_SECRET) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Não autorizado" }));
+          return;
+        }
+        const interaction = JSON.parse(body);
+        if (!isMusicInteraction(interaction)) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Interação não pertence ao worker de música" }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(interaction.type === 3 ? { type: 6 } : { type: 5, data: {} }));
+        musicManager.processInteraction(interaction).catch((error) => {
+          console.error(`[Música] Falha ao processar interação: ${error.message}`);
+        });
+      })
+      .catch((error) => {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: `Payload inválido: ${error.message}` }));
+      });
+    return;
+  }
+
   if (req.url === "/" || req.url === "/healthz") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(
@@ -86,6 +130,8 @@ const server = http.createServer((req, res) => {
         voiceChannelStatus: VOICE_CHANNEL_STATUS,
         voiceConnected:
           voiceConnection?.state.status === VoiceConnectionStatus.Ready,
+        activeVoiceChannelId: voiceConnection?.joinConfig?.channelId || VOICE_CHANNEL_ID,
+        music: musicManager?.healthSnapshot() || { active: false, queueLength: 0 },
         bannersCount: bannerFiles.length,
       })
     );
@@ -182,15 +228,18 @@ async function setVoiceChannelStatus() {
   }
 }
 
-function attachVoiceConnectionHandlers(connection) {
+function attachVoiceConnectionHandlers(connection, channelId = VOICE_CHANNEL_ID) {
   if (connection.__sevenHandlersAttached) return;
   connection.__sevenHandlersAttached = true;
+  connection.__sevenChannelId = channelId;
 
   connection.on(VoiceConnectionStatus.Ready, () => {
-    console.log(`[Voz] ✅ Conectado ao canal ${VOICE_CHANNEL_ID}.`);
-    setVoiceChannelStatus().catch((error) => {
-      console.warn("[Voz] Falha ao reaplicar o status do canal:", error.message);
-    });
+    console.log(`[Voz] ✅ Conectado ao canal ${channelId}.`);
+    if (channelId === VOICE_CHANNEL_ID) {
+      setVoiceChannelStatus().catch((error) => {
+        console.warn("[Voz] Falha ao reaplicar o status do canal:", error.message);
+      });
+    }
   });
 
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -206,13 +255,25 @@ function attachVoiceConnectionHandlers(connection) {
       if (connection.state.status !== VoiceConnectionStatus.Destroyed) {
         connection.destroy();
       }
-      scheduleVoiceReconnect("a sessão de voz não se recuperou");
+      if (channelId === VOICE_CHANNEL_ID && !musicManager?.isBusy(voiceGuildId)) {
+        scheduleVoiceReconnect("a sessão de voz não se recuperou");
+      } else if (channelId !== VOICE_CHANNEL_ID && musicManager?.isBusy(voiceGuildId)) {
+        musicManager.reconnectActive(voiceGuildId).catch((error) => {
+          console.error("[Música] Falha ao recuperar a sessão de voz:", error.message);
+        });
+      }
     }
   });
 
   connection.on(VoiceConnectionStatus.Destroyed, () => {
     console.warn("[Voz] Sessão destruída; uma nova conexão será criada.");
-    scheduleVoiceReconnect("a sessão foi destruída");
+    if (channelId === VOICE_CHANNEL_ID && !musicManager?.isBusy(voiceGuildId)) {
+      scheduleVoiceReconnect("a sessão foi destruída");
+    } else if (channelId !== VOICE_CHANNEL_ID && musicManager?.isBusy(voiceGuildId)) {
+      musicManager.reconnectActive(voiceGuildId).catch((error) => {
+        console.error("[Música] Falha ao recriar a sessão de voz:", error.message);
+      });
+    }
   });
 
   connection.on("error", (error) => {
@@ -235,8 +296,11 @@ async function connectToVoiceChannel() {
       voiceGuildId = guild.id;
 
       const existingConnection = getVoiceConnection(guild.id);
+      if (existingConnection && existingConnection.joinConfig.channelId !== channel.id && existingConnection.state.status !== VoiceConnectionStatus.Destroyed) {
+        existingConnection.destroy();
+      }
       const connection =
-        existingConnection && existingConnection.state.status !== VoiceConnectionStatus.Destroyed
+        existingConnection && existingConnection.joinConfig.channelId === channel.id && existingConnection.state.status !== VoiceConnectionStatus.Destroyed
           ? existingConnection
           : joinVoiceChannel({
               channelId: channel.id,
@@ -247,7 +311,7 @@ async function connectToVoiceChannel() {
             });
 
       voiceConnection = connection;
-      attachVoiceConnectionHandlers(connection);
+      attachVoiceConnectionHandlers(connection, VOICE_CHANNEL_ID);
       await entersState(connection, VoiceConnectionStatus.Ready, 15000);
       await setVoiceChannelStatus();
     } catch (error) {
@@ -263,6 +327,7 @@ async function connectToVoiceChannel() {
 
 async function ensureVoiceConnection() {
   if (!client.isReady()) return;
+  if (musicManager?.isBusy(voiceGuildId)) return;
 
   const currentConnection = voiceGuildId ? getVoiceConnection(voiceGuildId) : voiceConnection;
   if (currentConnection?.state.status === VoiceConnectionStatus.Ready) {
@@ -272,6 +337,48 @@ async function ensureVoiceConnection() {
   }
 
   await connectToVoiceChannel();
+}
+
+musicManager = new MusicManager(client, {
+  idleChannelId: VOICE_CHANNEL_ID,
+  onVoiceConnection: (connection, channelId) => {
+    voiceConnection = connection;
+    voiceGuildId = connection.joinConfig.guildId || voiceGuildId;
+    attachVoiceConnectionHandlers(connection, channelId);
+  },
+  onReturnToIdle: async (guildId) => {
+    if (!voiceGuildId || voiceGuildId === guildId) await connectToVoiceChannel();
+  },
+});
+
+async function registerMusicCommands() {
+  if (!client.user) return;
+  const definitions = MUSIC_COMMAND_DEFINITIONS.map((command) => ({ type: 1, ...command }));
+  for (const guild of client.guilds.cache.values()) {
+    const endpoint = `${DISCORD_API_BASE_URL}/applications/${client.user.id}/guilds/${guild.id}/commands`;
+    try {
+      const currentResponse = await fetch(endpoint, { headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` } });
+      const current = currentResponse.ok ? await currentResponse.json() : [];
+      const merged = new Map();
+      for (const command of Array.isArray(current) ? current : []) {
+        const { id, application_id, guild_id, version, ...definition } = command;
+        merged.set(command.name, definition);
+      }
+      for (const definition of definitions) merged.set(definition.name, definition);
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify([...merged.values()]),
+      });
+      if (!response.ok) {
+        console.warn(`[Música] Falha ao registrar comandos no servidor ${guild.id}: ${await response.text()}`);
+      } else {
+        console.log(`[Música] ${definitions.length} comandos musicais registrados no servidor ${guild.id}.`);
+      }
+    } catch (error) {
+      console.warn(`[Música] Registro de comandos indisponível no servidor ${guild.id}: ${error.message}`);
+    }
+  }
 }
 
 // -------------------------------------------------------------
@@ -475,6 +582,10 @@ client.once("ready", () => {
   client.user.setPresence({
     status: "online",
     activities: [{ name: VOICE_CHANNEL_STATUS, type: ActivityType.Playing }],
+  });
+
+  registerMusicCommands().catch((error) => {
+    console.error("[Música] Falha ao registrar comandos musicais:", error.message);
   });
 
   connectToVoiceChannel().catch((error) => {

@@ -19,3 +19,13 @@ services:
         value: "1544539183748620328"
       - key: VOICE_CHANNEL_STATUS
         value: "Preparando Cidade..."
+      - key: JAMENDO_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: MUSIC_ALLOWED_DOMAINS
+        value: "jamendo.com"
