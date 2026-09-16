@@ -197,7 +197,7 @@ export const COMMAND_BLUEPRINT = [
   { name: "punir", description: "Aplica uma punição a um membro", category: "moderacao" },
   { name: "infos", description: "Mostra informações do servidor", category: "servidor" },
   { name: "saldo", description: "Consulta o saldo do membro", category: "economia" },
-  { name: "play", description: "Busca e adiciona uma música à fila", category: "musica", options: [{ type: 3, name: "consulta", description: "Nome da música ou link autorizado", required: true, max_length: 200 }] },
+  { name: "play", description: "Busca e adiciona uma música à fila", category: "musica", options: [{ type: 3, name: "consulta", description: "Nome da música ou link autorizado", required: true, autocomplete: true, max_length: 200 }] },
   { name: "pause", description: "Pausa a música atual", category: "musica" },
   { name: "resume", description: "Continua a música pausada", category: "musica" },
   { name: "avancar", description: "Avança para a próxima música", category: "musica" },

@@ -17,7 +17,7 @@ import {
   getVoiceConnection,
   joinVoiceChannel,
 } from "@discordjs/voice";
-import { MUSIC_COMMAND_DEFINITIONS, MUSIC_COMMAND_NAMES, MusicManager } from "./music.js";
+import { getMusicAutocompleteChoices, MUSIC_COMMAND_DEFINITIONS, MUSIC_COMMAND_NAMES, MusicManager } from "./music.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const bannersDir = path.join(__dirname, "banners");
@@ -81,7 +81,7 @@ function readRequestBody(req) {
 }
 
 function isMusicInteraction(interaction) {
-  if (interaction?.type === 2) return MUSIC_COMMAND_NAMES.has(interaction.data?.name);
+  if (interaction?.type === 2 || interaction?.type === 4) return MUSIC_COMMAND_NAMES.has(interaction.data?.name);
   return interaction?.type === 3 && String(interaction.data?.custom_id || "").startsWith("music:");
 }
 
@@ -91,7 +91,7 @@ function isMusicInteraction(interaction) {
 const server = http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/api/discord/interactions") {
     readRequestBody(req)
-      .then((body) => {
+      .then(async (body) => {
         const providedSecret = String(req.headers["x-worker-secret"] || "");
         if (!WORKER_SHARED_SECRET || providedSecret.length !== WORKER_SHARED_SECRET.length || providedSecret !== WORKER_SHARED_SECRET) {
           res.writeHead(401, { "Content-Type": "application/json" });
@@ -102,6 +102,15 @@ const server = http.createServer((req, res) => {
         if (!isMusicInteraction(interaction)) {
           res.writeHead(404, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Interação não pertence ao worker de música" }));
+          return;
+        }
+        if (interaction.type === 4) {
+          const focusedOption = (interaction.data?.options || []).find((option) => option.focused);
+          const choices = interaction.data?.name === "play"
+            ? await getMusicAutocompleteChoices(focusedOption?.value || "")
+            : [];
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ type: 8, data: { choices } }));
           return;
         }
         res.writeHead(200, { "Content-Type": "application/json" });

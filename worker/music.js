@@ -12,7 +12,7 @@ export const MUSIC_COMMAND_DEFINITIONS = [
   {
     name: "play",
     description: "Busca e adiciona uma música à fila",
-    options: [{ type: 3, name: "consulta", description: "Nome da música ou link de áudio autorizado", required: true, max_length: 200 }],
+    options: [{ type: 3, name: "consulta", description: "Nome da música ou link de áudio autorizado", required: true, autocomplete: true, max_length: 200 }],
   },
   { name: "pause", description: "Pausa a música atual" },
   { name: "resume", description: "Continua a música pausada" },
@@ -238,32 +238,71 @@ async function searchJamendo(query) {
   }
 }
 
-async function searchAudius(query) {
+function audiusTrack(item, fallbackTitle = "") {
+  const artwork = item.artwork || {};
+  const permalink = String(item.permalink || "").trim();
+  return {
+    id: `audius:${item.id}`,
+    title: item.title || fallbackTitle,
+    artist: item.user?.name || "Artista desconhecido",
+    album: item.album?.album_name || "",
+    year: item.release_date?.slice(0, 4) || "",
+    durationMs: Number(item.duration || 0) * 1000,
+    artworkUrl: artwork["1000x1000"] || artwork["480x480"] || artwork["150x150"] || "",
+    source: "Audius",
+    sourceUrl: permalink ? `https://audius.co${permalink.startsWith("/") ? permalink : `/${permalink}`}` : "",
+    streamUrl: `${AUDIUS_API_URL}/tracks/${encodeURIComponent(item.id)}/stream`,
+  };
+}
+
+async function searchAudiusTracks(query, limit = 5, timeoutMs = SEARCH_TIMEOUT_MS) {
   try {
     const url = new URL(`${AUDIUS_API_URL}/tracks/search`);
     url.searchParams.set("query", query);
-    url.searchParams.set("limit", "5");
-    const data = await fetchJson(url);
-    const item = data?.data?.find((track) => track?.id && track?.is_streamable !== false);
-    if (!item) return null;
-    const artwork = item.artwork || {};
-    const permalink = String(item.permalink || "").trim();
-    return {
-      id: `audius:${item.id}`,
-      title: item.title || query,
-      artist: item.user?.name || "Artista desconhecido",
-      album: item.album?.album_name || "",
-      year: item.release_date?.slice(0, 4) || "",
-      durationMs: Number(item.duration || 0) * 1000,
-      artworkUrl: artwork["1000x1000"] || artwork["480x480"] || artwork["150x150"] || "",
-      source: "Audius",
-      sourceUrl: permalink ? `https://audius.co${permalink.startsWith("/") ? permalink : `/${permalink}`}` : "",
-      streamUrl: `${AUDIUS_API_URL}/tracks/${encodeURIComponent(item.id)}/stream`,
-    };
+    url.searchParams.set("limit", String(limit));
+    const data = await fetchJson(url, { signal: AbortSignal.timeout(timeoutMs) });
+    return (data?.data || [])
+      .filter((track) => track?.id && track?.is_streamable !== false)
+      .map((track) => audiusTrack(track, query));
   } catch (error) {
     console.warn(`[Música] Busca Audius indisponível: ${error.message}`);
+    return [];
+  }
+}
+
+async function getAudiusTrack(id) {
+  try {
+    const data = await fetchJson(`${AUDIUS_API_URL}/tracks/${encodeURIComponent(id)}`, {
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    });
+    if (!data?.data?.id || data.data.is_streamable === false) return null;
+    return audiusTrack(data.data);
+  } catch (error) {
+    console.warn(`[Música] Faixa Audius selecionada indisponível: ${error.message}`);
     return null;
   }
+}
+
+async function searchAudius(query) {
+  return (await searchAudiusTracks(query, 5))[0] || null;
+}
+
+export async function getMusicAutocompleteChoices(query) {
+  const normalizedQuery = String(query || "").trim();
+  if (!normalizedQuery) return [];
+  const tracks = await searchAudiusTracks(normalizedQuery, 8, 1800);
+  const seen = new Set();
+  return tracks
+    .map((track) => ({
+      name: `${track.title} — ${track.artist}`.slice(0, 100),
+      value: track.id.slice(0, 100),
+    }))
+    .filter((choice) => {
+      if (seen.has(choice.value)) return false;
+      seen.add(choice.value);
+      return true;
+    })
+    .slice(0, 25);
 }
 
 async function resolveTrack(query) {
@@ -275,6 +314,11 @@ async function resolveTrack(query) {
       throw new Error("Esse link não está em uma fonte de áudio autorizada pelo worker.");
     }
     return directTrack(normalizedQuery);
+  }
+
+  if (normalizedQuery.startsWith("audius:")) {
+    const selectedTrack = await getAudiusTrack(normalizedQuery.slice("audius:".length));
+    if (selectedTrack) return selectedTrack;
   }
 
   const [spotify, youtube] = await Promise.all([searchSpotify(normalizedQuery), searchYouTube(normalizedQuery)]);

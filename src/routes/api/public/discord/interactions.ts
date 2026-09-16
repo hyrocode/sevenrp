@@ -41,11 +41,11 @@ const MUSIC_COMMAND_NAMES = new Set([
 ]);
 
 function isMusicInteraction(interaction: { type?: number; data?: { name?: string; custom_id?: string } }) {
-  if (interaction.type === 2) return MUSIC_COMMAND_NAMES.has(interaction.data?.name ?? "");
+  if (interaction.type === 2 || interaction.type === 4) return MUSIC_COMMAND_NAMES.has(interaction.data?.name ?? "");
   return interaction.type === 3 && interaction.data?.custom_id?.startsWith("music:");
 }
 
-async function forwardMusicInteraction(body: string) {
+async function forwardMusicInteraction(body: string, interactionType: number) {
   const workerUrl = (process.env["DISCORD_WORKER_URL"] || "https://seven-discord-worker.onrender.com").replace(/\/+$/, "");
   const workerSecret = process.env["WORKER_SHARED_SECRET"] || "";
   try {
@@ -59,6 +59,7 @@ async function forwardMusicInteraction(body: string) {
     if (!response.ok) throw new Error(`worker respondeu ${response.status}`);
     return new Response(payload, { status: 200, headers: { "Content-Type": "application/json" } });
   } catch {
+    if (interactionType === 4) return Response.json({ type: 8, data: { choices: [] } });
     return Response.json({ type: 4, data: { content: "O sistema de música está iniciando. Tente novamente em alguns segundos.", flags: 64 } });
   }
 }
@@ -85,7 +86,7 @@ export const Route = createFileRoute("/api/public/discord/interactions")({
         };
 
         if (interaction.type === 1) return Response.json({ type: 1 });
-        if (isMusicInteraction(interaction)) return forwardMusicInteraction(body);
+        if (isMusicInteraction(interaction)) return forwardMusicInteraction(body, interaction.type);
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const commandName = interaction.data?.name ?? "desconhecido";
