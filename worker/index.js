@@ -610,7 +610,31 @@ client.once("ready", () => {
   });
 
   connectToVoiceChannel().catch((error) => {
-    console.error// Evento: Mensagem criada no servidor
+    console.error("[Voz] Falha ao iniciar a conexão persistente:", error.message);
+  });
+  setInterval(() => {
+    ensureVoiceConnection().catch((error) => {
+      console.error("[Voz] Falha na verificação periódica:", error.message);
+    });
+  }, VOICE_HEALTHCHECK_INTERVAL_MS);
+
+  // Dispara o primeiro heartbeat imediatamente
+  sendHeartbeat();
+
+  // Mantém pulso de vida a cada 30 segundos
+  setInterval(sendHeartbeat, 30_000);
+
+  // Verifica fila de ações a cada 15 segundos
+  setInterval(pollActions, 15_000);
+});
+
+// Evento: Entrada de Novo Membro (dispara boas-vindas instantâneas)
+client.on("guildMemberAdd", async (member) => {
+  console.log(`[Discord] Novo membro detectado no Gateway: ${member.user?.tag || member.user?.username} (${member.id})`);
+  await sendWelcomeDirect(member);
+});
+
+// Evento: Mensagem criada no servidor
 // O filtro é executado no worker Gateway para cobrir canais de texto, threads e fóruns.
 const linkWarningCooldowns = new Map();
 
@@ -708,31 +732,6 @@ client.on("messageCreate", async (message) => {
   // O aviso fica permanente no chat geral e nunca é apagado pelo worker.
   const warningSent = await sendLinkWarning(message);
   reportLinkModeration(message, detection, deleted, warningSent);
-});
-
-   console.error("[Voz] Falha na verificação periódica:", error.message);
-    });
-  }, VOICE_HEALTHCHECK_INTERVAL_MS);
-
-  // Dispara o primeiro heartbeat imediatamente
-  sendHeartbeat();
-
-  // Mantém pulso de vida a cada 30 segundos
-  setInterval(sendHeartbeat, 30_000);
-
-  // Verifica fila de ações a cada 15 segundos
-  setInterval(pollActions, 15_000);
-});
-
-// Evento: Entrada de Novo Membro (dispara boas-vindas instantâneas)
-client.on("guildMemberAdd", async (member) => {
-  console.log(`[Discord] Novo membro detectado no Gateway: ${member.user?.tag || member.user?.username} (${member.id})`);
-  await sendWelcomeDirect(member);
-});
-
-// Evento: Mensagem criada no servidor
-client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.guild) return;
 });
 
 // -------------------------------------------------------------
