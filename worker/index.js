@@ -18,6 +18,7 @@ import {
   joinVoiceChannel,
 } from "@discordjs/voice";
 import { getMusicAutocompleteChoices, MUSIC_COMMAND_DEFINITIONS, MUSIC_COMMAND_NAMES, MusicManager } from "./music.js";
+import { buildLinkWarning, detectExternalLink, isModerationExempt } from "./moderation.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const bannersDir = path.join(__dirname, "banners");
@@ -57,6 +58,11 @@ const SELF_URL = cleanEnv(process.env.RENDER_EXTERNAL_URL) || "https://seven-dis
 const WELCOME_CHANNEL_ID = cleanEnv(process.env.WELCOME_CHANNEL_ID) || "1545352442160611469";
 const VOICE_CHANNEL_ID = cleanEnv(process.env.VOICE_CHANNEL_ID) || "1544539183748620328";
 const VOICE_CHANNEL_STATUS = cleanEnv(process.env.VOICE_CHANNEL_STATUS) || "Preparando Cidade...";
+const LINK_FILTER_ENABLED = cleanEnv(process.env.LINK_FILTER_ENABLED).toLowerCase() !== "false";
+const LINK_WARNING_CHANNEL_ID = cleanEnv(process.env.LINK_WARNING_CHANNEL_ID) || "1549700633588928572";
+const LINK_WARNING_COOLDOWN_MS = 15_000;
+let linkModerationGuildId = cleanEnv(process.env.LINK_FILTER_GUILD_ID);
+let linkModerationGuildResolved = Boolean(linkModerationGuildId);
 const VOICE_RECONNECT_DELAY_MS = 5000;
 const VOICE_HEALTHCHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
@@ -69,6 +75,9 @@ if (!DISCORD_BOT_TOKEN) {
 
 console.log(
   `[Config] Token carregado (comprimento: ${DISCORD_BOT_TOKEN.length}, canal boas-vindas: ${WELCOME_CHANNEL_ID}, canal de voz: ${VOICE_CHANNEL_ID})`
+);
+console.log(
+  "[Config] Filtro de links " + (LINK_FILTER_ENABLED ? "ativo" : "desativado") + "; aviso permanente no canal " + LINK_WARNING_CHANNEL_ID
 );
 
 function readRequestBody(req) {
@@ -593,16 +602,115 @@ client.once("ready", () => {
     activities: [{ name: VOICE_CHANNEL_STATUS, type: ActivityType.Playing }],
   });
 
+  resolveLinkModerationGuild().catch((error) => {
+    console.error("[Moderação] Falha ao identificar o servidor do filtro de links:", error.message);
+  });
   registerMusicCommands().catch((error) => {
     console.error("[Música] Falha ao registrar comandos musicais:", error.message);
   });
 
   connectToVoiceChannel().catch((error) => {
-    console.error("[Voz] Falha ao iniciar a conexão persistente:", error.message);
+    console.error// Evento: Mensagem criada no servidor
+// O filtro é executado no worker Gateway para cobrir canais de texto, threads e fóruns.
+const linkWarningCooldowns = new Map();
+
+function canSendLinkWarning(userId) {
+  const now = Date.now();
+  const lastWarningAt = linkWarningCooldowns.get(userId) || 0;
+  if (now - lastWarningAt < LINK_WARNING_COOLDOWN_MS) return false;
+  linkWarningCooldowns.set(userId, now);
+  setTimeout(() => {
+    if (linkWarningCooldowns.get(userId) === now) linkWarningCooldowns.delete(userId);
+  }, LINK_WARNING_COOLDOWN_MS * 2).unref?.();
+  return true;
+}
+
+async function sendLinkWarning(message) {
+  if (!canSendLinkWarning(message.author.id)) return true;
+
+  try {
+    const channel = await client.channels.fetch(LINK_WARNING_CHANNEL_ID);
+    if (!channel || typeof channel.send !== "function") {
+      throw new Error(`O canal ${LINK_WARNING_CHANNEL_ID} não aceita mensagens de texto.`);
+    }
+    if (channel.guild?.id && channel.guild.id !== message.guild.id) {
+      throw new Error(`O canal de aviso pertence a outro servidor.`);
+    }
+
+    await channel.send({
+      content: buildLinkWarning(message.author.id),
+      allowedMentions: { users: [message.author.id] },
+    });
+    return true;
+  } catch (error) {
+    console.error(`[Moderação] Não foi possível enviar o aviso no canal ${LINK_WARNING_CHANNEL_ID}:`, error.message);
+    return false;
+  }
+}
+
+async function resolveLinkModerationGuild() {
+  if (linkModerationGuildResolved) return;
+
+  try {
+    const warningChannel = await client.channels.fetch(LINK_WARNING_CHANNEL_ID);
+    if (!warningChannel?.guildId) throw new Error("O canal de aviso não pertence a um servidor válido.");
+    linkModerationGuildId = warningChannel.guildId;
+    linkModerationGuildResolved = true;
+    console.log(`[Moderação] Filtro limitado ao servidor do canal de aviso: ${linkModerationGuildId}`);
+  } catch (error) {
+    console.error(`[Moderação] Filtro de links aguardando acesso ao canal ${LINK_WARNING_CHANNEL_ID}:`, error.message);
+  }
+}
+
+function reportLinkModeration(message, detection, deleted, warningSent) {
+  void postToDashboard("/api/public/worker/events", {
+    type: "moderation",
+    guildId: message.guild?.id,
+    channelId: message.channel?.id,
+    channelName: message.channel?.name,
+    authorId: message.author?.id,
+    authorLabel: message.author?.tag || message.author?.username || message.author?.id,
+    messageId: message.id,
+    messageLink: `https://discord.com/channels/${message.guild?.id}/${message.channel?.id}/${message.id}`,
+    actionTaken: deleted ? "link_message_deleted" : "link_message_delete_failed",
+    metadata: {
+      category: "external_link",
+      linkType: detection.kind,
+      host: detection.host,
+      deleted,
+      warningChannelId: LINK_WARNING_CHANNEL_ID,
+      warningSent,
+      channelType: message.channel?.type ?? null,
+    },
   });
-  setInterval(() => {
-    ensureVoiceConnection().catch((error) => {
-      console.error("[Voz] Falha na verificação periódica:", error.message);
+}
+
+client.on("messageCreate", async (message) => {
+  if (!LINK_FILTER_ENABLED || !linkModerationGuildResolved || message.author.bot || !message.guild) return;
+  if (message.guild.id !== linkModerationGuildId) return;
+  if (isModerationExempt(message.member)) return;
+
+  const detection = detectExternalLink(message.content);
+  if (!detection) return;
+
+  let deleted = false;
+  try {
+    if (!message.deletable) throw new Error("O bot não tem permissão para apagar esta mensagem.");
+    await message.delete();
+    deleted = true;
+    console.log(
+      `[Moderação] Link removido: ${detection.host} enviado por ${message.author.tag || message.author.username} em #${message.channel?.name || message.channel?.id}`
+    );
+  } catch (error) {
+    console.error(`[Moderação] Falha ao remover link de ${message.author?.id}:`, error.message);
+  }
+
+  // O aviso fica permanente no chat geral e nunca é apagado pelo worker.
+  const warningSent = await sendLinkWarning(message);
+  reportLinkModeration(message, detection, deleted, warningSent);
+});
+
+   console.error("[Voz] Falha na verificação periódica:", error.message);
     });
   }, VOICE_HEALTHCHECK_INTERVAL_MS);
 
