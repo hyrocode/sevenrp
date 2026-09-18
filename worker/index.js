@@ -129,28 +129,21 @@ async function ensureInviteAnnouncement() {
 
     const announcementPayload = {
       content: [
-        "✨ **Que tal compartilhar o SevenRP?**",
+        "💜 **Que tal compartilhar o SevenRP?**",
         "",
-        "Se puder, compartilhe o SevenRP com seus amigos e ajude a nossa cidade a crescer.",
+        "Olá, comunidade!",
+        "",
+        "O SevenRP está construindo uma cidade feita para quem gosta de viver boas histórias.",
+        "Compartilhe o servidor com seus amigos e ajude a trazer novas ideias, personagens e momentos para a comunidade.",
+        "",
+        "Cada pessoa nova ajuda a deixar o nosso Roleplay mais vivo. Obrigado por fazer parte disso! 🚀",
+        "",
+        "**Convite do servidor**",
         "",
         "```",
         `🔗 ${INVITE_ANNOUNCEMENT_URL}`,
         "```",
       ].join("\n"),
-      embeds: [{
-        title: "💜 Ajude a cidade a crescer",
-        description: [
-          "Olá, comunidade!",
-          "",
-          "O SevenRP está construindo uma cidade feita para quem gosta de viver boas histórias.",
-          "Compartilhe o servidor com seus amigos e ajude a trazer novas ideias, personagens e momentos para a comunidade.",
-          "",
-          "Cada pessoa nova ajuda a deixar o nosso Roleplay mais vivo. Obrigado por fazer parte disso! 🚀",
-          "",
-        ].join("\n"),
-        color: 0x7c5cff,
-        footer: { text: "SEVEN RP • Compartilhe a cidade" },
-      }],
       allowedMentions: { parse: [] },
     };
 
