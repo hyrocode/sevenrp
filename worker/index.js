@@ -61,6 +61,9 @@ const VOICE_CHANNEL_STATUS = cleanEnv(process.env.VOICE_CHANNEL_STATUS) || "Prep
 const LINK_FILTER_ENABLED = cleanEnv(process.env.LINK_FILTER_ENABLED).toLowerCase() !== "false";
 const LINK_WARNING_CHANNEL_ID = cleanEnv(process.env.LINK_WARNING_CHANNEL_ID) || "1549700633588928572";
 const LINK_WARNING_COOLDOWN_MS = 15_000;
+const INVITE_ANNOUNCEMENT_CHANNEL_ID = cleanEnv(process.env.INVITE_ANNOUNCEMENT_CHANNEL_ID) || "1550343043767607338";
+const INVITE_ANNOUNCEMENT_URL = cleanEnv(process.env.INVITE_ANNOUNCEMENT_URL) || "https://discord.gg/R9uxzQbgps";
+const INVITE_ANNOUNCEMENT_MARKER = "SEVEN_INVITE_ANNOUNCEMENT_V1";
 let linkModerationGuildId = cleanEnv(process.env.LINK_FILTER_GUILD_ID);
 let linkModerationGuildResolved = Boolean(linkModerationGuildId);
 const VOICE_RECONNECT_DELAY_MS = 5000;
@@ -80,6 +83,10 @@ console.log(
   "[Config] Filtro de links " + (LINK_FILTER_ENABLED ? "ativo" : "desativado") + "; aviso permanente no canal " + LINK_WARNING_CHANNEL_ID
 );
 
+console.log(
+  "[Config] Anúncio do convite " + INVITE_ANNOUNCEMENT_URL + " no canal " + INVITE_ANNOUNCEMENT_CHANNEL_ID
+);
+
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -92,6 +99,63 @@ function readRequestBody(req) {
 function isMusicInteraction(interaction) {
   if (interaction?.type === 2 || interaction?.type === 4) return MUSIC_COMMAND_NAMES.has(interaction.data?.name);
   return interaction?.type === 3 && String(interaction.data?.custom_id || "").startsWith("music:");
+}
+
+async function ensureInviteAnnouncement() {
+  if (!client.isReady()) return;
+
+  try {
+    const channel = await client.channels.fetch(INVITE_ANNOUNCEMENT_CHANNEL_ID);
+    if (!channel || !channel.isTextBased() || !channel.messages?.fetch || typeof channel.send !== "function") {
+      throw new Error(`O canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID} não aceita mensagens.`);
+    }
+
+    const recentMessages = await channel.messages.fetch({ limit: 100 });
+    const alreadyPublished = recentMessages.some((message) => {
+      if (message.author?.id !== client.user?.id) return false;
+      return message.embeds?.some((embed) => embed.footer?.text === INVITE_ANNOUNCEMENT_MARKER)
+        || message.components?.some((row) => row.components?.some((component) => component.url === INVITE_ANNOUNCEMENT_URL));
+    });
+
+    if (alreadyPublished) {
+      console.log(`[Convite] Mensagem já existe no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}; nenhuma duplicata foi criada.`);
+      return;
+    }
+
+    const sentMessage = await channel.send({
+      content: "🔗 **CONVITE OFICIAL • SEVEN ROLEPLAY**",
+      embeds: [{
+        title: "💜 Ajude a Seven Roleplay a crescer!",
+        description: [
+          "Olá, comunidade!",
+          "",
+          "A Seven Roleplay está crescendo, e cada novo membro faz parte dessa construção.",
+          "Compartilhe nosso servidor com seus amigos e ajude a trazer novas histórias, ideias e momentos para a cidade.",
+          "",
+          "Juntos, vamos construir uma comunidade forte, ativa e cheia de boas histórias. 🚀",
+          "",
+          `**Convite oficial:** ${INVITE_ANNOUNCEMENT_URL}`,
+        ].join("\n"),
+        color: 0x7c5cff,
+        footer: { text: INVITE_ANNOUNCEMENT_MARKER },
+      }],
+      components: [{
+        type: 1,
+        components: [{
+          type: 2,
+          style: 5,
+          label: "Copiar link",
+          emoji: { name: "🔗" },
+          url: INVITE_ANNOUNCEMENT_URL,
+        }],
+      }],
+      allowedMentions: { parse: [] },
+    });
+
+    console.log(`[Convite] ✅ Mensagem publicada no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID} (MsgID: ${sentMessage.id}).`);
+  } catch (error) {
+    console.error(`[Convite] Falha ao publicar no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}:`, error.message);
+  }
 }
 
 // -------------------------------------------------------------
@@ -605,6 +669,12 @@ client.once("ready", () => {
   resolveLinkModerationGuild().catch((error) => {
     console.error("[Moderação] Falha ao identificar o servidor do filtro de links:", error.message);
   });
+  ensureInviteAnnouncement();
+  setTimeout(() => {
+    ensureInviteAnnouncement().catch((error) => {
+      console.error("[Convite] Falha na segunda tentativa de publicação:", error.message);
+    });
+  }, 15_000).unref?.();
   registerMusicCommands().catch((error) => {
     console.error("[Música] Falha ao registrar comandos musicais:", error.message);
   });

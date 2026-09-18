@@ -23,6 +23,10 @@ services:
         value: "true"
       - key: LINK_WARNING_CHANNEL_ID
         value: "1549700633588928572"
+      - key: INVITE_ANNOUNCEMENT_CHANNEL_ID
+        value: "1550343043767607338"
+      - key: INVITE_ANNOUNCEMENT_URL
+        value: "https://discord.gg/R9uxzQbgps"
       - key: JAMENDO_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_ID
