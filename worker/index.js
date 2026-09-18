@@ -475,6 +475,11 @@ async function connectToVoiceChannel() {
       await entersState(connection, VoiceConnectionStatus.Ready, 15000);
       await setVoiceChannelStatus();
     } catch (error) {
+      const staleConnection = voiceGuildId ? getVoiceConnection(voiceGuildId) : voiceConnection;
+      if (staleConnection && staleConnection.state.status !== VoiceConnectionStatus.Destroyed) {
+        staleConnection.destroy();
+      }
+      voiceConnection = null;
       console.error("[Voz] Falha ao conectar ao canal configurado:", error.message);
       scheduleVoiceReconnect("a conexão inicial falhou");
     } finally {
