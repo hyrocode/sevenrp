@@ -101,6 +101,14 @@ function isMusicInteraction(interaction) {
   return interaction?.type === 3 && String(interaction.data?.custom_id || "").startsWith("music:");
 }
 
+function isInviteCopyInteraction(interaction) {
+  return interaction?.type === 3 && interaction.data?.custom_id === "invite:copy";
+}
+
+function isSupportedInteraction(interaction) {
+  return isMusicInteraction(interaction) || isInviteCopyInteraction(interaction);
+}
+
 async function ensureInviteAnnouncement() {
   if (!client.isReady()) return;
 
@@ -111,54 +119,55 @@ async function ensureInviteAnnouncement() {
     }
 
     const recentMessages = await channel.messages.fetch({ limit: 100 });
-    const alreadyPublished = recentMessages.some((message) => {
+    const existingMessage = recentMessages.find((message) => {
       if (message.author?.id !== client.user?.id) return false;
       return message.embeds?.some((embed) => embed.footer?.text === INVITE_ANNOUNCEMENT_MARKER)
-        || message.components?.some((row) => row.components?.some((component) => component.url === INVITE_ANNOUNCEMENT_URL));
+        || message.components?.some((row) => row.components?.some((component) =>
+          component.url === INVITE_ANNOUNCEMENT_URL || component.customId === "invite:copy" || component.custom_id === "invite:copy"));
     });
 
-    if (alreadyPublished) {
-      console.log(`[Convite] Mensagem já existe no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}; nenhuma duplicata foi criada.`);
-      return;
-    }
-
-    const sentMessage = await channel.send({
-      content: "🔗 **CONVITE OFICIAL • SEVEN ROLEPLAY**",
+    const announcementPayload = {
+      content: "✨ **Que tal compartilhar o SevenRP?**",
       embeds: [{
-        title: "💜 Ajude a Seven Roleplay a crescer!",
+        title: "💜 Ajude a cidade a crescer",
         description: [
           "Olá, comunidade!",
           "",
-          "A Seven Roleplay está crescendo, e cada novo membro faz parte dessa construção.",
-          "Compartilhe nosso servidor com seus amigos e ajude a trazer novas histórias, ideias e momentos para a cidade.",
+          "O SevenRP está construindo uma cidade feita para quem gosta de viver boas histórias.",
+          "Compartilhe o servidor com seus amigos e ajude a trazer novas ideias, personagens e momentos para a comunidade.",
           "",
-          "Juntos, vamos construir uma comunidade forte, ativa e cheia de boas histórias. 🚀",
+          "Cada pessoa nova ajuda a deixar o nosso Roleplay mais vivo. Obrigado por fazer parte disso! 🚀",
           "",
-          `**Convite oficial:** ${INVITE_ANNOUNCEMENT_URL}`,
         ].join("\n"),
         color: 0x7c5cff,
-        footer: { text: INVITE_ANNOUNCEMENT_MARKER },
+        footer: { text: "SEVEN RP • Compartilhe a cidade" },
       }],
       components: [{
         type: 1,
         components: [{
           type: 2,
-          style: 5,
-          label: "Copiar link",
+          style: 2,
+          label: "Copiar convite",
           emoji: { name: "🔗" },
-          url: INVITE_ANNOUNCEMENT_URL,
+          custom_id: "invite:copy",
         }],
       }],
       allowedMentions: { parse: [] },
-    });
+    };
+
+    if (existingMessage) {
+      await existingMessage.edit(announcementPayload);
+      console.log(`[Convite] ✅ Mensagem existente atualizada no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}.`);
+      return;
+    }
+
+    const sentMessage = await channel.send(announcementPayload);
 
     console.log(`[Convite] ✅ Mensagem publicada no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID} (MsgID: ${sentMessage.id}).`);
   } catch (error) {
     console.error(`[Convite] Falha ao publicar no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}:`, error.message);
   }
-}
-
-// -------------------------------------------------------------
+}// -------------------------------------------------------------
 // 1. Servidor HTTP & KeepAlive (Impede que o Render Free durma)
 // -------------------------------------------------------------
 const server = http.createServer((req, res) => {
@@ -172,9 +181,21 @@ const server = http.createServer((req, res) => {
           return;
         }
         const interaction = JSON.parse(body);
-        if (!isMusicInteraction(interaction)) {
+        if (!isSupportedInteraction(interaction)) {
           res.writeHead(404, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Interação não pertence ao worker de música" }));
+          res.end(JSON.stringify({ error: "Interação não suportada por este worker" }));
+          return;
+        }
+        if (isInviteCopyInteraction(interaction)) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            type: 4,
+            data: {
+              content: `🔗 **Link do SevenRP**\n\n\`${INVITE_ANNOUNCEMENT_URL}\`\n\nToque e segure no link para copiar.`,
+              flags: 64,
+              allowed_mentions: { parse: [] },
+            },
+          }));
           return;
         }
         if (interaction.type === 4) {
