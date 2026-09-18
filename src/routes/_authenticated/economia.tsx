@@ -1,0 +1,3 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { SectionPage } from "@/components/section-page";
+export const Route = createFileRoute("/_authenticated/economia")({ head: () => ({ meta: [{ title: "Economia — SEVEN ROLEPLAY" }, { name: "description", content: "Indicadores econômicos SEVEN ROLEPLAY." }, { property: "og:title", content: "Economia — SEVEN ROLEPLAY" }, { property: "og:description", content: "Fluxo econômico e transações de risco." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: () => <SectionPage section="economia" /> });

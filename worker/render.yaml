@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: seven-discord-worker
+    runtime: node
+    plan: free
+    rootDir: worker
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: WORKER_ID
+        value: render-worker-01
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: WORKER_SHARED_SECRET
+        sync: false
+      - key: DASHBOARD_URL
+        sync: false
+      - key: VOICE_CHANNEL_ID
+        value: "1544539183748620328"
+      - key: VOICE_CHANNEL_STATUS
+        value: "Preparando Cidade..."
+      - key: LINK_FILTER_ENABLED
+        value: "true"
+      - key: LINK_WARNING_CHANNEL_ID
+        value: "1549700633588928572"
+      - key: INVITE_ANNOUNCEMENT_CHANNEL_ID
+        value: "1550343043767607338"
+      - key: INVITE_ANNOUNCEMENT_URL
+        value: "https://discord.gg/R9uxzQbgps"
+      - key: JAMENDO_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: MUSIC_ALLOWED_DOMAINS
+        value: "jamendo.com,audius.co,staked.cloud"
