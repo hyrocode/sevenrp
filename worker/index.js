@@ -122,12 +122,21 @@ async function ensureInviteAnnouncement() {
     const existingMessage = recentMessages.find((message) => {
       if (message.author?.id !== client.user?.id) return false;
       return message.embeds?.some((embed) => embed.footer?.text === INVITE_ANNOUNCEMENT_MARKER)
+        || message.content?.includes("Que tal compartilhar o SevenRP?")
         || message.components?.some((row) => row.components?.some((component) =>
           component.url === INVITE_ANNOUNCEMENT_URL || component.customId === "invite:copy" || component.custom_id === "invite:copy"));
     });
 
     const announcementPayload = {
-      content: "✨ **Que tal compartilhar o SevenRP?**",
+      content: [
+        "✨ **Que tal compartilhar o SevenRP?**",
+        "",
+        "Se puder, compartilhe o SevenRP com seus amigos e ajude a nossa cidade a crescer.",
+        "",
+        "```",
+        `🔗 ${INVITE_ANNOUNCEMENT_URL}`,
+        "```",
+      ].join("\n"),
       embeds: [{
         title: "💜 Ajude a cidade a crescer",
         description: [
@@ -141,16 +150,6 @@ async function ensureInviteAnnouncement() {
         ].join("\n"),
         color: 0x7c5cff,
         footer: { text: "SEVEN RP • Compartilhe a cidade" },
-      }],
-      components: [{
-        type: 1,
-        components: [{
-          type: 2,
-          style: 2,
-          label: "Copiar convite",
-          emoji: { name: "🔗" },
-          custom_id: "invite:copy",
-        }],
       }],
       allowedMentions: { parse: [] },
     };
@@ -167,7 +166,9 @@ async function ensureInviteAnnouncement() {
   } catch (error) {
     console.error(`[Convite] Falha ao publicar no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}:`, error.message);
   }
-}// -------------------------------------------------------------
+}
+
+// -------------------------------------------------------------
 // 1. Servidor HTTP & KeepAlive (Impede que o Render Free durma)
 // -------------------------------------------------------------
 const server = http.createServer((req, res) => {
