@@ -64,6 +64,25 @@ const LINK_WARNING_COOLDOWN_MS = 15_000;
 const INVITE_ANNOUNCEMENT_CHANNEL_ID = cleanEnv(process.env.INVITE_ANNOUNCEMENT_CHANNEL_ID) || "1550343043767607338";
 const INVITE_ANNOUNCEMENT_URL = cleanEnv(process.env.INVITE_ANNOUNCEMENT_URL) || "https://discord.gg/R9uxzQbgps";
 const INVITE_ANNOUNCEMENT_MARKER = "SEVEN_INVITE_ANNOUNCEMENT_V1";
+const SUGGESTIONS_FORUM_CHANNEL_ID = cleanEnv(process.env.SUGGESTIONS_FORUM_CHANNEL_ID) || "1544539285678587954";
+const SUGGESTIONS_POST_TITLE = "💡 SUGESTÕES | SEVEN ROLEPLAY";
+const SUGGESTIONS_POST_BODY = [
+  "O Seven Roleplay está em desenvolvimento, e queremos construir uma comunidade que também participe dessa evolução.",
+  "",
+  "Este espaço é destinado às suas ideias e sugestões para o projeto. Você pode sugerir sistemas, mecânicas, veículos, empregos, organizações, economia, mapa, interface, recursos de Roleplay e muito mais.",
+  "",
+  "Antes de publicar, tente explicar de forma clara:",
+  "",
+  "• O que você está sugerindo?",
+  "• Como funcionaria?",
+  "• O que isso acrescentaria ao jogo?",
+  "",
+  "Todas as sugestões serão avaliadas pela equipe. Uma ideia enviada aqui pode, futuramente, fazer parte do Seven Roleplay. 💜",
+  "",
+  "Sua ideia também pode ajudar a construir esse mundo.",
+  "",
+  "@everyone",
+].join("\n");
 let linkModerationGuildId = cleanEnv(process.env.LINK_FILTER_GUILD_ID);
 let linkModerationGuildResolved = Boolean(linkModerationGuildId);
 const VOICE_RECONNECT_DELAY_MS = 5000;
@@ -80,12 +99,12 @@ console.log(
   `[Config] Token carregado (comprimento: ${DISCORD_BOT_TOKEN.length}, canal boas-vindas: ${WELCOME_CHANNEL_ID}, canal de voz: ${VOICE_CHANNEL_ID})`
 );
 console.log(
-  "[Config] Filtro de links " + (LINK_FILTER_ENABLED ? "ativo" : "desativado") + "; aviso permanente no canal " + LINK_WARNING_CHANNEL_ID
+  `[Config] Filtro de links ${LINK_FILTER_ENABLED ? "ativo" : "desativado"}; aviso permanente no canal ${LINK_WARNING_CHANNEL_ID}`
 );
-
 console.log(
-  "[Config] Anúncio do convite " + INVITE_ANNOUNCEMENT_URL + " no canal " + INVITE_ANNOUNCEMENT_CHANNEL_ID
+  `[Config] Anúncio do convite ${INVITE_ANNOUNCEMENT_URL} no canal ${INVITE_ANNOUNCEMENT_CHANNEL_ID}`
 );
+console.log(`[Config] Post de sugestões no fórum ${SUGGESTIONS_FORUM_CHANNEL_ID}`);
 
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -107,6 +126,47 @@ function isInviteCopyInteraction(interaction) {
 
 function isSupportedInteraction(interaction) {
   return isMusicInteraction(interaction) || isInviteCopyInteraction(interaction);
+}
+
+async function ensureSuggestionsPost() {
+  if (!client.isReady()) return;
+
+  try {
+    const forum = await client.channels.fetch(SUGGESTIONS_FORUM_CHANNEL_ID);
+    if (!forum?.threads?.create || typeof forum.threads.fetchActive !== "function") {
+      throw new Error(`O canal ${SUGGESTIONS_FORUM_CHANNEL_ID} não é um fórum compatível.`);
+    }
+
+    const activeThreads = await forum.threads.fetchActive();
+    let existingThread = activeThreads.threads.find((thread) => thread.name === SUGGESTIONS_POST_TITLE);
+
+    if (!existingThread && typeof forum.threads.fetchArchived === "function") {
+      const archivedThreads = await forum.threads.fetchArchived({ type: "public", limit: 100 });
+      existingThread = archivedThreads.threads.find((thread) => thread.name === SUGGESTIONS_POST_TITLE);
+    }
+
+    if (existingThread) {
+      if (!existingThread.flags?.has("Pinned")) {
+        await existingThread.pin("Publicação oficial de sugestões do Seven Roleplay");
+      }
+      console.log(`[Sugestões] ✅ Publicação já existente verificada e fixada: ${existingThread.id}.`);
+      return;
+    }
+
+    const thread = await forum.threads.create({
+      name: SUGGESTIONS_POST_TITLE,
+      message: {
+        content: SUGGESTIONS_POST_BODY,
+        allowedMentions: { parse: ["everyone"] },
+      },
+      reason: "Publicação oficial inicial do canal de sugestões",
+    });
+
+    await thread.pin("Publicação oficial de sugestões do Seven Roleplay");
+    console.log(`[Sugestões] ✅ Publicação criada e fixada no fórum ${SUGGESTIONS_FORUM_CHANNEL_ID} (ThreadID: ${thread.id}).`);
+  } catch (error) {
+    console.error(`[Sugestões] ❌ Falha ao publicar no fórum ${SUGGESTIONS_FORUM_CHANNEL_ID}:`, error.message);
+  }
 }
 
 async function ensureInviteAnnouncement() {
@@ -687,12 +747,15 @@ client.once("ready", () => {
   resolveLinkModerationGuild().catch((error) => {
     console.error("[Moderação] Falha ao identificar o servidor do filtro de links:", error.message);
   });
+
   ensureInviteAnnouncement();
+  ensureSuggestionsPost();
   setTimeout(() => {
     ensureInviteAnnouncement().catch((error) => {
       console.error("[Convite] Falha na segunda tentativa de publicação:", error.message);
     });
   }, 15_000).unref?.();
+
   registerMusicCommands().catch((error) => {
     console.error("[Música] Falha ao registrar comandos musicais:", error.message);
   });
